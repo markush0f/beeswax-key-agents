@@ -4,7 +4,7 @@ use directories::UserDirs;
 use indicatif::{ProgressBar, ProgressStyle};
 use inquire::{Select, Text};
 use std::process;
-use vault_core::scan_all_files_for_keys;
+use vault_core::scan_all_files_for_keys_streaming;
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -58,7 +58,26 @@ fn main() {
     spinner.set_message(format!("Escaneando archivos en {}", scan_path));
     spinner.enable_steady_tick(std::time::Duration::from_millis(80));
 
-    let results = scan_all_files_for_keys(&scan_path);
+    let spinner_for_cb = spinner.clone();
+    let mut results = Vec::new();
+    scan_all_files_for_keys_streaming(&scan_path, |m| {
+        let hardcoded_label = if m.hardcoded {
+            "HARDCODEADA"
+        } else {
+            "posible referencia"
+        };
+
+        spinner_for_cb.println(format!(
+            "[{}] {} : L{} ➜ {} [{}]",
+            m.provider,
+            m.file_path.display(),
+            m.line_number,
+            m.key,
+            hardcoded_label
+        ));
+
+        results.push(m);
+    });
 
     if results.is_empty() {
         spinner.finish_and_clear();

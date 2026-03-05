@@ -35,6 +35,16 @@ pub fn scan_env_for_keys(path: &str) -> Vec<KeyMatch> {
 
 pub fn scan_all_files_for_keys(path: &str) -> Vec<KeyMatch> {
     let mut matches = Vec::new();
+
+    scan_all_files_for_keys_streaming(path, |m| matches.push(m));
+
+    matches
+}
+
+pub fn scan_all_files_for_keys_streaming<F>(path: &str, mut on_match: F)
+where
+    F: FnMut(KeyMatch),
+{
     let patterns_list = get_patterns();
 
     for entry in WalkDir::new(path)
@@ -50,17 +60,15 @@ pub fn scan_all_files_for_keys(path: &str) -> Vec<KeyMatch> {
 
         if let Some(content) = read_text_file(p) {
             let hardcoded_by_default = is_env_file(p);
-            find_matches_in_content(
+            find_matches_in_content_streaming(
                 p,
                 &content,
                 &patterns_list,
                 hardcoded_by_default,
-                &mut matches,
+                &mut on_match,
             );
         }
     }
-
-    matches
 }
 
 fn is_env_file(path: &Path) -> bool {
@@ -117,13 +125,31 @@ fn find_matches_in_content(
     hardcoded_by_default: bool,
     matches: &mut Vec<KeyMatch>,
 ) {
+    find_matches_in_content_streaming(
+        file_path,
+        content,
+        patterns,
+        hardcoded_by_default,
+        &mut |m| matches.push(m),
+    );
+}
+
+fn find_matches_in_content_streaming<F>(
+    file_path: &Path,
+    content: &str,
+    patterns: &[SecretPattern],
+    hardcoded_by_default: bool,
+    on_match: &mut F,
+) where
+    F: FnMut(KeyMatch),
+{
     for (i, line) in content.lines().enumerate() {
         for pattern in patterns {
             for caps in pattern.regex.captures_iter(line) {
                 if let Some(matched) = caps.get(1) {
                     let key = matched.as_str();
 
-                    matches.push(KeyMatch {
+                    on_match(KeyMatch {
                         file_path: file_path.to_path_buf(),
                         line_number: i + 1,
                         provider: pattern.name.to_string(),
