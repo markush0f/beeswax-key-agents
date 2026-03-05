@@ -2,11 +2,12 @@ use std::sync::mpsc::{Receiver, TryRecvError};
 use std::time::{Duration, Instant};
 
 use crossterm::event::{self, Event, KeyEventKind};
+use ratatui::prelude::Rect;
 
 use vault_core::KeyMatch;
 
 use crate::state::{AppAction, AppState};
-use crate::ui::{Renderer, TerminalGuard};
+use crate::ui;
 
 pub struct App;
 
@@ -16,15 +17,16 @@ impl App {
         env_rx: Receiver<KeyMatch>,
         ide_rx: Receiver<KeyMatch>,
     ) -> AppState {
-        let _guard = TerminalGuard::enter();
-        let mut stdout = std::io::stdout();
+        let _guard = ui::TerminalGuard::enter().expect("terminal init failed");
+        let mut terminal = ui::make_terminal().expect("terminal init failed");
 
         let mut needs_redraw = true;
         let mut last_render = Instant::now() - Duration::from_millis(1000);
         let mut tick: u64 = 0;
 
         loop {
-            let viewport_h = Renderer::body_height();
+            let area = terminal.size().unwrap_or(Rect::new(0, 0, 80, 24));
+            let viewport_h = ui::viewport_height(area);
 
             let mut env_disconnected = false;
             loop {
@@ -87,7 +89,7 @@ impl App {
             }
 
             if needs_redraw && now.duration_since(last_render) >= Duration::from_millis(33) {
-                Renderer::render(&mut stdout, &state, tick);
+                let _ = terminal.draw(|f| ui::draw(f, &state, tick));
                 last_render = now;
                 needs_redraw = false;
             }
@@ -95,6 +97,7 @@ impl App {
             std::thread::sleep(Duration::from_millis(10));
         }
 
+        drop(terminal);
         drop(_guard);
         state
     }
