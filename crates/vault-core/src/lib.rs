@@ -96,7 +96,7 @@ fn is_ignored_dir(path: &Path) -> bool {
         .map(|name| {
             matches!(
                 name,
-                ".git" | "target" | "node_modules" | ".idea" | ".vscode"
+                ".git" | "target" | "node_modules" | ".idea" | ".vscode" | ".antigravity-server"
             )
         })
         .unwrap_or(false)
