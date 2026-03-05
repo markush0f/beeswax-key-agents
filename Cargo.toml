@@ -8,3 +8,6 @@ clap = { version = "4.5.60", features = ["derive"] }
 colored = "3.1.1"
 indicatif = "0.18.4"
 inquire = "0.9.4"
+regex = "1.12.3"
+serde = { version = "1.0.228", features = ["derive"] }
+walkdir = "2.5.0"

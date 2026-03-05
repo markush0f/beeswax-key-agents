@@ -1,8 +1,9 @@
+use agent_key_detector::models::scan::ScanType;
+use agent_key_detector::services::scanner::ScannerService;
 use clap::Parser;
 use colored::*;
 use indicatif::{ProgressBar, ProgressStyle};
 use inquire::{Select, Text};
-use std::thread;
 use std::time::Duration;
 
 /// Agent Key Detector CLI
@@ -40,10 +41,15 @@ fn main() {
         .prompt()
         .unwrap_or_else(|_| "Quick Scan");
 
+    let selected_scan_type = match scan_type {
+        "Deep Scan" => ScanType::Deep,
+        "Custom Scan" => ScanType::Custom,
+        _ => ScanType::Quick,
+    };
+
     println!("\n{} {}...", "Starting".yellow().bold(), scan_type.cyan());
     println!("Target path: {}\n", path.italic());
 
-    // Create a progress bar (spinner)
     let pb = ProgressBar::new_spinner();
     pb.set_style(
         ProgressStyle::default_spinner()
@@ -51,16 +57,40 @@ fn main() {
             .template("{spinner:.blue} {msg}")
             .unwrap(),
     );
+    pb.enable_steady_tick(Duration::from_millis(100));
     pb.set_message(format!("Scanning '{}' for leaked keys...", path));
 
-    // Simulate work
-    for _ in 0..40 {
-        pb.inc(1);
-        thread::sleep(Duration::from_millis(50));
-    }
+    // Initialize and run the scanner service
+    let scanner = ScannerService::new();
+    let result = scanner.scan_path(&path, selected_scan_type);
 
     pb.finish_with_message("Scan complete!".green().to_string());
 
-    println!("\n{}", "Results:".green().bold());
-    println!("  {} No keys found! Your code looks secure.\n", "✔".green());
+    match result {
+        Ok(res) => {
+            println!("\n{}", "Results:".green().bold());
+            println!("  Files scanned: {}", res.files_scanned.to_string().cyan());
+            if res.matches.is_empty() {
+                println!("  {} No keys found! Your code looks secure.\n", "✔".green());
+            } else {
+                println!(
+                    "  {} Found {} potential keys/secrets:\n",
+                    "⚠".red().bold(),
+                    res.matches.len().to_string().red()
+                );
+                for m in res.matches {
+                    println!(
+                        "    [{}] {}:{}",
+                        m.key_type.yellow(),
+                        m.file_path,
+                        m.line_number
+                    );
+                    println!("    ➜ {}\n", m.matched_content.red());
+                }
+            }
+        }
+        Err(e) => {
+            println!("\n  {} Error scanning: {}\n", "✖".red(), e);
+        }
+    }
 }
