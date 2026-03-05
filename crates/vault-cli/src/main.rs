@@ -1,7 +1,7 @@
 use clap::Parser;
 use colored::*;
 use directories::UserDirs;
-use inquire::Text;
+use inquire::{Select, Text};
 use std::process;
 use vault_core::scan_env_for_keys;
 
@@ -52,28 +52,37 @@ fn main() {
 
     if results.is_empty() {
         println!(
-            "{}",
+            "\n{}",
             "✔ No se encontraron API keys expuestas en ningún .env.".green()
         );
     } else {
         println!(
-            "{} ¡Alerta! Se encontraron {} API keys expuestas:\n",
+            "\n{} ¡Alerta! Se encontraron {} API keys expuestas.\n",
             "⚠".red().bold(),
             results.len().to_string().red()
         );
-        for m in results {
-            println!(
-                "  [{}] {}",
-                "Proveedor".yellow().bold(),
-                m.provider.magenta().bold()
-            );
-            println!(
-                "  [{}] {}",
-                "Archivo".blue().bold(),
-                m.file_path.display().to_string().cyan()
-            );
-            println!("  [{}] {}", "Línea".blue().bold(), m.line_number);
-            println!("  [{}] {}\n", "Clave".blue().bold(), m.key.red());
-        }
+
+        // Mapear los resultados a una lista de strings para inquire::Select
+        let mut options: Vec<String> = results
+            .iter()
+            .map(|m| {
+                format!(
+                    "[{}] {} : L{} ➜ {}",
+                    m.provider,
+                    m.file_path.display(),
+                    m.line_number,
+                    m.key
+                )
+            })
+            .collect();
+
+        options.push("👉 [Salir]".to_string());
+
+        let _ = Select::new(
+            "Navega por los secretos encontrados (Usa ↑/↓, Enter para seleccionar):",
+            options,
+        )
+        .with_page_size(15)
+        .prompt();
     }
 }
