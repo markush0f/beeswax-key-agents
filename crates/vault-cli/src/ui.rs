@@ -18,7 +18,7 @@ use ratatui::{
 
 use crate::state::{AppState, Tab};
 
-pub const HEADER_HEIGHT: u16 = 9;
+pub const HEADER_HEIGHT: u16 = 6;
 pub const FOOTER_HEIGHT: u16 = 2;
 
 pub struct TerminalGuard;
@@ -68,18 +68,10 @@ pub fn draw(frame: &mut Frame, state: &AppState, tick: u64) {
 }
 
 fn render_header(frame: &mut Frame, state: &AppState, area: Rect, tick: u64) {
-    let border = if state.env.done && state.ides.done {
-        Color::Green
-    } else if tick % 2 == 0 {
-        Color::Cyan
-    } else {
-        Color::Blue
-    };
-
     let block = Block::default()
         .borders(Borders::ALL)
         .border_type(BorderType::Rounded)
-        .border_style(Style::default().fg(border));
+        .border_style(Style::default().fg(Color::DarkGray));
     let inner = block.inner(area);
     frame.render_widget(block, area);
 
@@ -89,35 +81,46 @@ fn render_header(frame: &mut Frame, state: &AppState, area: Rect, tick: u64) {
             Constraint::Length(1),
             Constraint::Length(1),
             Constraint::Length(1),
-            Constraint::Length(2),
-            Constraint::Min(1),
+            Constraint::Length(1),
         ])
         .split(inner);
 
-    let badge = Paragraph::new(Line::from(vec![
+    let title = Paragraph::new(Line::from(vec![
         Span::styled(
-            " APP ",
+            "VAULT",
             Style::default()
-                .fg(Color::Black)
-                .bg(Color::LightCyan)
+                .fg(Color::Cyan)
                 .add_modifier(Modifier::BOLD),
         ),
         Span::raw(" "),
         Span::styled(
             "SCANNER",
             Style::default()
-                .fg(Color::LightCyan)
+                .fg(Color::White)
                 .add_modifier(Modifier::BOLD),
         ),
-        Span::raw("  "),
+    ]))
+    .alignment(Alignment::Center);
+    frame.render_widget(title, rows[0]);
+
+    let health = Paragraph::new(Line::from(vec![
+        Span::styled("ENV ", Style::default().fg(Color::Gray)),
         Span::styled(
-            if state.env.done && state.ides.done {
-                "READY"
-            } else {
-                "LIVE"
-            },
+            if state.env.done { "READY" } else { "SCANNING" },
             Style::default()
-                .fg(if state.env.done && state.ides.done {
+                .fg(if state.env.done {
+                    Color::Green
+                } else {
+                    Color::Yellow
+                })
+                .add_modifier(Modifier::BOLD),
+        ),
+        Span::styled("  •  ", Style::default().fg(Color::DarkGray)),
+        Span::styled("IDES ", Style::default().fg(Color::Gray)),
+        Span::styled(
+            if state.ides.done { "READY" } else { "SCANNING" },
+            Style::default()
+                .fg(if state.ides.done {
                     Color::Green
                 } else {
                     Color::Yellow
@@ -126,28 +129,11 @@ fn render_header(frame: &mut Frame, state: &AppState, area: Rect, tick: u64) {
         ),
     ]))
     .alignment(Alignment::Center);
-    frame.render_widget(badge, rows[0]);
-
-    let title = Paragraph::new(Line::from(vec![
-        Span::styled(
-            "VAULT ",
-            Style::default()
-                .fg(Color::LightCyan)
-                .add_modifier(Modifier::BOLD),
-        ),
-        Span::styled(
-            "SECRET DETECTION CONSOLE",
-            Style::default()
-                .fg(Color::White)
-                .add_modifier(Modifier::BOLD),
-        ),
-    ]))
-    .alignment(Alignment::Center);
-    frame.render_widget(title, rows[1]);
+    frame.render_widget(health, rows[1]);
 
     let scan_path = elide_middle(
         &state.scan_path,
-        usize::from(rows[2].width).saturating_sub(15).max(8),
+        usize::from(rows[2].width).saturating_sub(12).max(8),
     );
     let path_line = Paragraph::new(Line::from(vec![
         Span::styled("Path: ", Style::default().fg(Color::Gray)),
@@ -185,19 +171,12 @@ fn render_header(frame: &mut Frame, state: &AppState, area: Rect, tick: u64) {
     .highlight_style(
         Style::default()
             .fg(Color::Black)
-            .bg(Color::White)
+            .bg(Color::Cyan)
             .add_modifier(Modifier::BOLD),
     )
     .style(Style::default().fg(Color::DarkGray))
     .divider(" ");
     frame.render_widget(tabs, rows[3]);
-
-    let hint = Paragraph::new(Line::from(Span::styled(
-        "e / i switch view   |   arrows move   |   PgUp/PgDn   |   Home/End   |   q quit",
-        Style::default().fg(Color::DarkGray),
-    )))
-    .alignment(Alignment::Center);
-    frame.render_widget(hint, rows[4]);
 }
 
 fn render_body(frame: &mut Frame, state: &AppState, area: Rect) {
