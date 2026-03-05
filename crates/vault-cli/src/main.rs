@@ -1,6 +1,6 @@
 use clap::Parser;
 use colored::*;
-use vault_core::find_env_files;
+use vault_core::scan_env_for_openai_keys;
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -16,27 +16,35 @@ fn main() {
     println!("{}", "======================================".cyan().bold());
     println!(
         "{}",
-        "   Vault CLI - Escáner de .env        ".green().bold()
+        "   Vault CLI - Escáner OpenAI Keys    ".green().bold()
     );
     println!("{}", "======================================".cyan().bold());
-    println!("\nBuscando archivos .env en: {} ...\n", args.path.yellow());
+    println!(
+        "\nBuscando archivos .env y extrañiendo API keys en: {} ...\n",
+        args.path.yellow()
+    );
 
-    let env_files = find_env_files(&args.path);
+    let results = scan_env_for_openai_keys(&args.path);
 
-    if env_files.is_empty() {
+    if results.is_empty() {
         println!(
             "{}",
-            "✔ No se encontraron archivos .env en el directorio especificado.".green()
+            "✔ No se encontraron API keys de OpenAI en ningún .env.".green()
         );
     } else {
         println!(
-            "{} Se encontraron {} archivo(s) .env potencialmente expuestos:\n",
+            "{} ¡Alerta! Se encontraron {} API keys de OpenAI expuestas:\n",
             "⚠".red().bold(),
-            env_files.len().to_string().red()
+            results.len().to_string().red()
         );
-        for file in env_files {
-            println!("  ➜ {}", file.display().to_string().red());
+        for m in results {
+            println!(
+                "  [{}] {}",
+                "Archivo".blue().bold(),
+                m.file_path.display().to_string().cyan()
+            );
+            println!("  [{}] {}", "Línea".blue().bold(), m.line_number);
+            println!("  [{}] {}\n", "Clave".blue().bold(), m.key.red());
         }
-        println!();
     }
 }
