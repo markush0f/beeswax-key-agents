@@ -18,7 +18,7 @@ use ratatui::{
 
 use crate::state::{AppState, Tab};
 
-pub const HEADER_HEIGHT: u16 = 6;
+pub const HEADER_HEIGHT: u16 = 7;
 pub const FOOTER_HEIGHT: u16 = 2;
 
 pub struct TerminalGuard;
@@ -78,69 +78,124 @@ fn render_header(frame: &mut Frame, state: &AppState, area: Rect, tick: u64) {
     let rows = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
+            Constraint::Length(2),
             Constraint::Length(1),
-            Constraint::Length(1),
-            Constraint::Length(1),
-            Constraint::Length(1),
+            Constraint::Length(2),
         ])
         .split(inner);
 
-    let title = Paragraph::new(Line::from(vec![
+    let top = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Percentage(60), Constraint::Percentage(40)])
+        .split(rows[0]);
+
+    let brand = Paragraph::new(vec![
+        Line::from(vec![
+            Span::styled(
+                " VAULT SCANNER ",
+                Style::default()
+                    .fg(Color::Black)
+                    .bg(Color::Cyan)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::raw("  "),
+            Span::styled("real-time secret monitor", Style::default().fg(Color::Gray)),
+        ]),
+        Line::from(vec![
+            Span::styled("[OpenAI]", Style::default().fg(Color::Green)),
+            Span::raw(" "),
+            Span::styled("[Gemini]", Style::default().fg(Color::Blue)),
+        ]),
+    ]);
+    frame.render_widget(brand, top[0]);
+
+    let stats_rows = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Length(1), Constraint::Length(1)])
+        .split(top[1]);
+
+    let env_status = if state.env.done {
+        Style::default()
+            .fg(Color::Black)
+            .bg(Color::Green)
+            .add_modifier(Modifier::BOLD)
+    } else {
+        Style::default()
+            .fg(Color::Black)
+            .bg(Color::Yellow)
+            .add_modifier(Modifier::BOLD)
+    };
+    let ide_status = if state.ides.done {
+        Style::default()
+            .fg(Color::Black)
+            .bg(Color::Green)
+            .add_modifier(Modifier::BOLD)
+    } else {
+        Style::default()
+            .fg(Color::Black)
+            .bg(Color::Yellow)
+            .add_modifier(Modifier::BOLD)
+    };
+
+    let health = Paragraph::new(Line::from(vec![
+        Span::styled(" ENV ", Style::default().fg(Color::DarkGray)),
         Span::styled(
-            "VAULT",
-            Style::default()
-                .fg(Color::Cyan)
-                .add_modifier(Modifier::BOLD),
+            if state.env.done { " READY " } else { " SCAN " },
+            env_status,
         ),
         Span::raw(" "),
+        Span::styled(" IDES ", Style::default().fg(Color::DarkGray)),
         Span::styled(
-            "SCANNER",
+            if state.ides.done { " READY " } else { " SCAN " },
+            ide_status,
+        ),
+        Span::raw(" "),
+        Span::styled(spinner_ascii(tick), Style::default().fg(Color::DarkGray)),
+    ]))
+    .alignment(Alignment::Right);
+    frame.render_widget(health, stats_rows[0]);
+
+    let summary = Paragraph::new(Line::from(vec![
+        Span::styled("ENV ", Style::default().fg(Color::Gray)),
+        Span::styled(
+            state.env.len().to_string(),
             Style::default()
                 .fg(Color::White)
                 .add_modifier(Modifier::BOLD),
         ),
-    ]))
-    .alignment(Alignment::Center);
-    frame.render_widget(title, rows[0]);
-
-    let health = Paragraph::new(Line::from(vec![
-        Span::styled("ENV ", Style::default().fg(Color::Gray)),
+        Span::styled(" | IDES ", Style::default().fg(Color::Gray)),
         Span::styled(
-            if state.env.done { "READY" } else { "SCANNING" },
+            state.ides.len().to_string(),
             Style::default()
-                .fg(if state.env.done {
-                    Color::Green
-                } else {
-                    Color::Yellow
-                })
+                .fg(Color::White)
                 .add_modifier(Modifier::BOLD),
         ),
-        Span::styled("  •  ", Style::default().fg(Color::DarkGray)),
-        Span::styled("IDES ", Style::default().fg(Color::Gray)),
+        Span::styled(" | TOTAL ", Style::default().fg(Color::Gray)),
         Span::styled(
-            if state.ides.done { "READY" } else { "SCANNING" },
+            (state.env.len() + state.ides.len()).to_string(),
             Style::default()
-                .fg(if state.ides.done {
-                    Color::Green
-                } else {
-                    Color::Yellow
-                })
+                .fg(Color::Cyan)
                 .add_modifier(Modifier::BOLD),
         ),
     ]))
-    .alignment(Alignment::Center);
-    frame.render_widget(health, rows[1]);
+    .alignment(Alignment::Right);
+    frame.render_widget(summary, stats_rows[1]);
 
     let scan_path = elide_middle(
         &state.scan_path,
-        usize::from(rows[2].width).saturating_sub(12).max(8),
+        usize::from(rows[1].width).saturating_sub(14).max(8),
     );
     let path_line = Paragraph::new(Line::from(vec![
-        Span::styled("Path: ", Style::default().fg(Color::Gray)),
+        Span::styled("SCAN PATH  ", Style::default().fg(Color::DarkGray)),
         Span::styled(scan_path, Style::default().fg(Color::White)),
     ]))
-    .alignment(Alignment::Center);
-    frame.render_widget(path_line, rows[2]);
+    .alignment(Alignment::Left);
+    frame.render_widget(path_line, rows[1]);
+
+    let bottom = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Length(1), Constraint::Length(1)])
+        .split(rows[2]);
 
     let tabs = Tabs::new(vec![
         Line::from(format!(
@@ -175,8 +230,21 @@ fn render_header(frame: &mut Frame, state: &AppState, area: Rect, tick: u64) {
             .add_modifier(Modifier::BOLD),
     )
     .style(Style::default().fg(Color::DarkGray))
-    .divider(" ");
-    frame.render_widget(tabs, rows[3]);
+    .divider("  ");
+    frame.render_widget(tabs, bottom[0]);
+
+    let shortcuts = Paragraph::new(Line::from(vec![
+        Span::styled("[E]", Style::default().fg(Color::Cyan)),
+        Span::styled(" ENV  ", Style::default().fg(Color::DarkGray)),
+        Span::styled("[I]", Style::default().fg(Color::Cyan)),
+        Span::styled(" IDES  ", Style::default().fg(Color::DarkGray)),
+        Span::styled("[TAB]", Style::default().fg(Color::Cyan)),
+        Span::styled(" SWITCH  ", Style::default().fg(Color::DarkGray)),
+        Span::styled("[Q]", Style::default().fg(Color::Cyan)),
+        Span::styled(" QUIT", Style::default().fg(Color::DarkGray)),
+    ]))
+    .alignment(Alignment::Center);
+    frame.render_widget(shortcuts, bottom[1]);
 }
 
 fn render_body(frame: &mut Frame, state: &AppState, area: Rect) {
@@ -448,7 +516,7 @@ fn render_provider_card(frame: &mut Frame, state: &AppState, area: Rect) {
         Bar::default()
             .value(openai)
             .label("OpenAI".into())
-            .style(Style::default().fg(Color::Red))
+            .style(Style::default().fg(Color::Green))
             .value_style(
                 Style::default()
                     .fg(Color::White)
@@ -551,7 +619,9 @@ fn render_match_line(m: &vault_core::KeyMatch) -> Line<'static> {
 fn provider_style(provider: &str) -> Style {
     let provider = provider.to_ascii_lowercase();
     if provider.contains("openai") {
-        return Style::default().fg(Color::Red).add_modifier(Modifier::BOLD);
+        return Style::default()
+            .fg(Color::Green)
+            .add_modifier(Modifier::BOLD);
     }
     if provider.contains("gemini") {
         return Style::default()
