@@ -180,22 +180,6 @@ fn read_text_file(path: &Path) -> Option<String> {
     String::from_utf8(bytes).ok()
 }
 
-fn find_matches_in_content(
-    file_path: &Path,
-    content: &str,
-    patterns: &[SecretPattern],
-    hardcoded_by_default: bool,
-    matches: &mut Vec<KeyMatch>,
-) {
-    find_matches_in_content_streaming(
-        file_path,
-        content,
-        patterns,
-        hardcoded_by_default,
-        &mut |m| matches.push(m),
-    );
-}
-
 fn find_matches_in_content_streaming<F>(
     file_path: &Path,
     content: &str,

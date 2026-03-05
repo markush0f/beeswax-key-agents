@@ -8,6 +8,5 @@ clap = { version = "4.5.60", features = ["derive"] }
 colored = "3.1.1"
 crossterm = "0.28.1"
 directories = "6.0.0"
-indicatif = "0.17.11"
 inquire = "0.9.4"
 vault-core = { path = "../vault-core" }
