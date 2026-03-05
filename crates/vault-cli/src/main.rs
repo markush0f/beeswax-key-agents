@@ -1,6 +1,6 @@
 use clap::Parser;
 use colored::*;
-use vault_core::scan_env_for_openai_keys;
+use vault_core::scan_env_for_keys;
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -16,28 +16,33 @@ fn main() {
     println!("{}", "======================================".cyan().bold());
     println!(
         "{}",
-        "   Vault CLI - Escáner OpenAI Keys    ".green().bold()
+        "   Vault CLI - Escáner de Secretos    ".green().bold()
     );
     println!("{}", "======================================".cyan().bold());
     println!(
-        "\nBuscando archivos .env y extrañiendo API keys en: {} ...\n",
+        "\nBuscando archivos .env y extrayendo secretos en: {} ...\n",
         args.path.yellow()
     );
 
-    let results = scan_env_for_openai_keys(&args.path);
+    let results = scan_env_for_keys(&args.path);
 
     if results.is_empty() {
         println!(
             "{}",
-            "✔ No se encontraron API keys de OpenAI en ningún .env.".green()
+            "✔ No se encontraron API keys expuestas en ningún .env.".green()
         );
     } else {
         println!(
-            "{} ¡Alerta! Se encontraron {} API keys de OpenAI expuestas:\n",
+            "{} ¡Alerta! Se encontraron {} API keys expuestas:\n",
             "⚠".red().bold(),
             results.len().to_string().red()
         );
         for m in results {
+            println!(
+                "  [{}] {}",
+                "Proveedor".yellow().bold(),
+                m.provider.magenta().bold()
+            );
             println!(
                 "  [{}] {}",
                 "Archivo".blue().bold(),
