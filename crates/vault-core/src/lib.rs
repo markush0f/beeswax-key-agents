@@ -16,6 +16,15 @@ pub struct KeyMatch {
 
 pub fn scan_env_for_keys(path: &str) -> Vec<KeyMatch> {
     let mut matches = Vec::new();
+    scan_env_for_keys_streaming(path, |m| matches.push(m));
+
+    matches
+}
+
+pub fn scan_env_for_keys_streaming<F>(path: &str, mut on_match: F)
+where
+    F: FnMut(KeyMatch),
+{
     let patterns_list = get_patterns();
 
     for entry in WalkDir::new(path).into_iter().filter_map(|e| e.ok()) {
@@ -26,11 +35,9 @@ pub fn scan_env_for_keys(path: &str) -> Vec<KeyMatch> {
         }
 
         if let Some(content) = read_text_file(p) {
-            find_matches_in_content(p, &content, &patterns_list, true, &mut matches);
+            find_matches_in_content_streaming(p, &content, &patterns_list, true, &mut on_match);
         }
     }
-
-    matches
 }
 
 pub fn scan_all_files_for_keys(path: &str) -> Vec<KeyMatch> {
@@ -67,6 +74,61 @@ where
                 hardcoded_by_default,
                 &mut on_match,
             );
+        }
+    }
+}
+
+pub fn scan_project_files_for_keys_streaming<F>(path: &str, mut on_match: F)
+where
+    F: FnMut(KeyMatch),
+{
+    let patterns_list = get_patterns();
+
+    for entry in WalkDir::new(path)
+        .into_iter()
+        .filter_entry(|e| !is_ignored_dir(e.path()))
+        .filter_map(|e| e.ok())
+    {
+        let p = entry.path();
+
+        if !is_scannable_file(p) || is_env_file(p) {
+            continue;
+        }
+
+        if let Some(content) = read_text_file(p) {
+            find_matches_in_content_streaming(p, &content, &patterns_list, false, &mut on_match);
+        }
+    }
+}
+
+pub fn scan_ide_files_for_keys_streaming<F>(path: &str, mut on_match: F)
+where
+    F: FnMut(KeyMatch),
+{
+    let patterns_list = get_patterns();
+    let root = Path::new(path);
+
+    for dir_name in [".antigravity-server", ".vscode", ".idea"] {
+        let ide_root = root.join(dir_name);
+        if !ide_root.is_dir() {
+            continue;
+        }
+
+        for entry in WalkDir::new(&ide_root).into_iter().filter_map(|e| e.ok()) {
+            let p = entry.path();
+            if !is_scannable_file(p) {
+                continue;
+            }
+
+            if let Some(content) = read_text_file(p) {
+                find_matches_in_content_streaming(
+                    p,
+                    &content,
+                    &patterns_list,
+                    false,
+                    &mut on_match,
+                );
+            }
         }
     }
 }
