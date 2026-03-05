@@ -1,9 +1,10 @@
 use clap::Parser;
 use colored::*;
 use directories::UserDirs;
+use indicatif::{ProgressBar, ProgressStyle};
 use inquire::{Select, Text};
 use std::process;
-use vault_core::scan_env_for_keys;
+use vault_core::scan_all_files_for_keys;
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
@@ -48,16 +49,27 @@ fn main() {
         }
     };
 
-    let results = scan_env_for_keys(&scan_path);
+    let spinner = ProgressBar::new_spinner();
+    spinner.set_style(
+        ProgressStyle::with_template("{spinner} {msg}")
+            .unwrap()
+            .tick_strings(&["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]),
+    );
+    spinner.set_message(format!("Escaneando archivos en {}", scan_path));
+    spinner.enable_steady_tick(std::time::Duration::from_millis(80));
+
+    let results = scan_all_files_for_keys(&scan_path);
 
     if results.is_empty() {
+        spinner.finish_and_clear();
         println!(
             "\n{}",
-            "✔ No se encontraron API keys expuestas en ningún .env.".green()
+            "✔ No se encontraron API keys expuestas en los archivos escaneados.".green()
         );
     } else {
+        spinner.finish_and_clear();
         println!(
-            "\n{} ¡Alerta! Se encontraron {} API keys expuestas.\n",
+            "\n{} ¡Alerta! Se encontraron {} API keys expuestas en archivos del proyecto.\n",
             "⚠".red().bold(),
             results.len().to_string().red()
         );
@@ -66,12 +78,19 @@ fn main() {
         let mut options: Vec<String> = results
             .iter()
             .map(|m| {
+                let hardcoded_label = if m.hardcoded {
+                    "HARDCODEADA"
+                } else {
+                    "posible referencia"
+                };
+
                 format!(
-                    "[{}] {} : L{} ➜ {}",
+                    "[{}] {} : L{} ➜ {} [{}]",
                     m.provider,
                     m.file_path.display(),
                     m.line_number,
-                    m.key
+                    m.key,
+                    hardcoded_label
                 )
             })
             .collect();

@@ -1,0 +1,6 @@
+{
+    "rust-client.disableRustup": true,
+    "rust-client.engine": "rust-analyzer",
+    "rust-analyzer.server.path": "/home/markus/.cargo/bin/rust-analyzer",
+    "rust-analyzer.checkOnSave.command": "clippy"
+}
