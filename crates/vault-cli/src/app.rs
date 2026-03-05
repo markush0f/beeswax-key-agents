@@ -2,7 +2,7 @@ use std::sync::mpsc::{Receiver, TryRecvError};
 use std::time::{Duration, Instant};
 
 use crossterm::event::{self, Event, KeyEventKind};
-use ratatui::prelude::Rect;
+use ratatui::prelude::Size;
 
 use vault_core::KeyMatch;
 
@@ -25,8 +25,11 @@ impl App {
         let mut tick: u64 = 0;
 
         loop {
-            let area = terminal.size().unwrap_or(Rect::new(0, 0, 80, 24));
-            let viewport_h = ui::viewport_height(area);
+            let size = terminal.size().unwrap_or(Size {
+                width: 80,
+                height: 24,
+            });
+            let viewport_h = ui::viewport_height(size);
 
             let mut env_disconnected = false;
             loop {
