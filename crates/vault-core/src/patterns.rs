@@ -13,7 +13,6 @@ pub fn get_patterns() -> Vec<SecretPattern> {
         },
         SecretPattern {
             name: "Gemini API Key",
-            // Las API Keys de Gemini (Google AI Studio) típicamente comienzan con AIza y tienen 39 caracteres en total.
             regex: Regex::new(r"(AIza[0-9A-Za-z_\-]{35})").unwrap(),
         },
     ]
