@@ -1,5 +1,7 @@
+pub mod config;
 pub mod patterns;
 
+use config::{EXCLUDED_DIRS, IDE_DIRS};
 use patterns::{SecretPattern, get_patterns};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -108,7 +110,10 @@ where
     let patterns_list = get_patterns();
     let root = Path::new(path);
 
-    for dir_name in [".antigravity-server", ".vscode", ".idea"] {
+    for dir_name in IDE_DIRS {
+        if is_excluded_dir_name(dir_name) {
+            continue;
+        }
         let ide_root = root.join(dir_name);
         if !ide_root.is_dir() {
             continue;
@@ -155,13 +160,12 @@ fn is_ignored_dir(path: &Path) -> bool {
 
     path.file_name()
         .and_then(|n| n.to_str())
-        .map(|name| {
-            matches!(
-                name,
-                ".git" | "target" | "node_modules" | ".idea" | ".vscode" | ".antigravity-server"
-            )
-        })
+        .map(is_excluded_dir_name)
         .unwrap_or(false)
+}
+
+fn is_excluded_dir_name(name: &str) -> bool {
+    EXCLUDED_DIRS.iter().any(|d| d == &name)
 }
 
 fn read_text_file(path: &Path) -> Option<String> {
