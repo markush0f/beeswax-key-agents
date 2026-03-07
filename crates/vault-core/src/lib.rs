@@ -1,5 +1,5 @@
 pub mod config;
-mod file_utils;
+pub mod file_utils;
 mod matcher;
 pub mod patterns;
 pub mod scan;
