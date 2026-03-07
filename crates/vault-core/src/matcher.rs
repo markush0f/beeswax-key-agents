@@ -31,6 +31,9 @@ pub fn find_matches_in_content_streaming<F>(
     }
 }
 
+/// Best-effort heuristic for deciding if a secret is inline/hardcoded.
+///
+/// Checks for quoted literals and assignment-like lines (`=` or `:`).
 fn is_hardcoded_in_line(line: &str, key: &str) -> bool {
     let quoted_double = format!("\"{key}\"");
     let quoted_single = format!("'{key}'");
@@ -47,6 +50,7 @@ fn is_hardcoded_in_line(line: &str, key: &str) -> bool {
     trimmed.contains(key) && (trimmed.contains('=') || trimmed.contains(':'))
 }
 
+/// Masks a key for display: keeps a short prefix/suffix to help identify matches.
 fn mask_key(val: &str) -> String {
     if val.len() >= 12 {
         format!("{}...{}", &val[..10], &val[val.len() - 4..])
