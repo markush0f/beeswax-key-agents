@@ -19,5 +19,43 @@ pub fn get_patterns() -> Vec<SecretPattern> {
             regex: Regex::new(r"(?:^|[^A-Za-z0-9])(AIza[0-9A-Za-z_-]{35})(?:$|[^A-Za-z0-9])")
                 .unwrap(),
         },
+        SecretPattern {
+            name: "Anthropic API Key",
+            regex: Regex::new(r"(?:^|[^A-Za-z0-9])(sk-ant-[A-Za-z0-9_-]{20,})(?:$|[^A-Za-z0-9])")
+                .unwrap(),
+        },
     ]
+}
+
+#[cfg(test)]
+mod tests {
+    use super::get_patterns;
+
+    #[test]
+    fn matches_anthropic_keys() {
+        let patterns = get_patterns();
+        let anthropic = patterns
+            .iter()
+            .find(|p| p.name == "Anthropic API Key")
+            .expect("anthropic pattern should exist");
+
+        let line = r#"ANTHROPIC_API_KEY="sk-ant-api03-ABCDEFGHIJKLMNOPQRSTUVWX1234567890abcdEFGH""#;
+        let caps = anthropic
+            .regex
+            .captures(line)
+            .expect("expected anthropic key match");
+        assert!(caps.get(1).is_some());
+    }
+
+    #[test]
+    fn does_not_match_non_key_tokens() {
+        let patterns = get_patterns();
+        let anthropic = patterns
+            .iter()
+            .find(|p| p.name == "Anthropic API Key")
+            .expect("anthropic pattern should exist");
+
+        let line = "'asterisk-exception': {'id': 'Asterisk-exception'}";
+        assert!(anthropic.regex.captures(line).is_none());
+    }
 }

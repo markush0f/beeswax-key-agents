@@ -263,6 +263,7 @@ fn render_provider_card(frame: &mut Frame, state: &AppState, area: Rect) {
     let active = state.active_list();
     let mut openai = 0u64;
     let mut gemini = 0u64;
+    let mut anthropic = 0u64;
     let mut other = 0u64;
 
     for item in &active.items {
@@ -271,6 +272,8 @@ fn render_provider_card(frame: &mut Frame, state: &AppState, area: Rect) {
             openai += 1;
         } else if provider.contains("gemini") {
             gemini += 1;
+        } else if provider.contains("anthropic") {
+            anthropic += 1;
         } else {
             other += 1;
         }
@@ -296,6 +299,15 @@ fn render_provider_card(frame: &mut Frame, state: &AppState, area: Rect) {
                     .add_modifier(Modifier::BOLD),
             ),
         Bar::default()
+            .value(anthropic)
+            .label("Anthro".into())
+            .style(Style::default().fg(Color::Yellow))
+            .value_style(
+                Style::default()
+                    .fg(Color::White)
+                    .add_modifier(Modifier::BOLD),
+            ),
+        Bar::default()
             .value(other)
             .label("Other".into())
             .style(Style::default().fg(Color::Gray))
@@ -306,13 +318,13 @@ fn render_provider_card(frame: &mut Frame, state: &AppState, area: Rect) {
             ),
     ];
 
-    let max = openai.max(gemini).max(other).max(1);
-    let width = if inner.width >= 36 {
-        8
-    } else if inner.width >= 27 {
+    let max = openai.max(gemini).max(anthropic).max(other).max(1);
+    let width = if inner.width >= 42 {
         6
+    } else if inner.width >= 34 {
+        5
     } else {
-        4
+        3
     };
 
     let chart = BarChart::default()
@@ -351,6 +363,11 @@ fn provider_style(provider: &str) -> Style {
     if provider.contains("gemini") {
         return Style::default()
             .fg(Color::Blue)
+            .add_modifier(Modifier::BOLD);
+    }
+    if provider.contains("anthropic") {
+        return Style::default()
+            .fg(Color::Yellow)
             .add_modifier(Modifier::BOLD);
     }
     Style::default().fg(Color::Gray)
