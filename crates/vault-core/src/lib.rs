@@ -1,5 +1,6 @@
+mod cache;
 pub mod config;
-pub mod file_utils;
+mod file_utils;
 mod matcher;
 pub mod patterns;
 pub mod scan;

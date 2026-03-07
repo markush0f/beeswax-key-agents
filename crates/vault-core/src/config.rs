@@ -15,6 +15,7 @@ pub const EXCLUDED_DIRS: &[&str] = &[
     ".fleet",
     ".antigravity-server",
     ".codex",
+    ".vault-cache",
     ".cache",
     ".pytest_cache",
     ".mypy_cache",
