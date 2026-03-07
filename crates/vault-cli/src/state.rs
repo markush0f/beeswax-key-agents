@@ -5,6 +5,7 @@ use vault_core::KeyMatch;
 pub enum Tab {
     Env,
     Ides,
+    Files,
 }
 
 #[derive(Default)]
@@ -110,6 +111,7 @@ pub struct AppState {
     pub tab: Tab,
     pub env: ListState,
     pub ides: ListState,
+    pub files: ListState,
 }
 
 impl AppState {
@@ -119,6 +121,7 @@ impl AppState {
             tab: Tab::Env,
             env: ListState::new(),
             ides: ListState::new(),
+            files: ListState::new(),
         }
     }
 
@@ -126,6 +129,7 @@ impl AppState {
         match self.tab {
             Tab::Env => &self.env,
             Tab::Ides => &self.ides,
+            Tab::Files => &self.files,
         }
     }
 
@@ -133,6 +137,7 @@ impl AppState {
         match self.tab {
             Tab::Env => &mut self.env,
             Tab::Ides => &mut self.ides,
+            Tab::Files => &mut self.files,
         }
     }
 
@@ -144,12 +149,36 @@ impl AppState {
         self.ides.push(m, viewport_h);
     }
 
+    pub fn push_file(&mut self, m: KeyMatch, viewport_h: usize) {
+        self.files.push(m, viewport_h);
+    }
+
     pub fn set_env_done(&mut self) {
         self.env.set_done();
     }
 
     pub fn set_ide_done(&mut self) {
         self.ides.set_done();
+    }
+
+    pub fn set_files_done(&mut self) {
+        self.files.set_done();
+    }
+
+    fn next_tab(&mut self) {
+        self.tab = match self.tab {
+            Tab::Env => Tab::Ides,
+            Tab::Ides => Tab::Files,
+            Tab::Files => Tab::Env,
+        };
+    }
+
+    fn prev_tab(&mut self) {
+        self.tab = match self.tab {
+            Tab::Env => Tab::Files,
+            Tab::Ides => Tab::Env,
+            Tab::Files => Tab::Ides,
+        };
     }
 
     pub fn handle_key(&mut self, k: KeyEvent, viewport_h: usize) -> AppAction {
@@ -160,19 +189,15 @@ impl AppState {
         match k.code {
             KeyCode::Esc | KeyCode::Char('q') | KeyCode::Char('Q') => AppAction::Exit,
             KeyCode::Left => {
-                self.tab = Tab::Env;
+                self.prev_tab();
                 AppAction::None
             }
             KeyCode::Right => {
-                self.tab = Tab::Ides;
+                self.next_tab();
                 AppAction::None
             }
             KeyCode::Tab => {
-                self.tab = if self.tab == Tab::Env {
-                    Tab::Ides
-                } else {
-                    Tab::Env
-                };
+                self.next_tab();
                 AppAction::None
             }
             KeyCode::Char('e') | KeyCode::Char('E') => {
@@ -181,6 +206,10 @@ impl AppState {
             }
             KeyCode::Char('i') | KeyCode::Char('I') => {
                 self.tab = Tab::Ides;
+                AppAction::None
+            }
+            KeyCode::Char('f') | KeyCode::Char('F') => {
+                self.tab = Tab::Files;
                 AppAction::None
             }
             KeyCode::Up => {

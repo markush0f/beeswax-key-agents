@@ -16,6 +16,7 @@ impl App {
         mut state: AppState,
         env_rx: Receiver<KeyMatch>,
         ide_rx: Receiver<KeyMatch>,
+        files_rx: Receiver<KeyMatch>,
     ) -> AppState {
         let _guard = ui::TerminalGuard::enter().expect("terminal init failed");
         let mut terminal = ui::make_terminal().expect("terminal init failed");
@@ -66,6 +67,25 @@ impl App {
             }
             if ide_disconnected && !state.ides.done {
                 state.set_ide_done();
+                needs_redraw = true;
+            }
+
+            let mut files_disconnected = false;
+            loop {
+                match files_rx.try_recv() {
+                    Ok(m) => {
+                        state.push_file(m, viewport_h);
+                        needs_redraw = true;
+                    }
+                    Err(TryRecvError::Empty) => break,
+                    Err(TryRecvError::Disconnected) => {
+                        files_disconnected = true;
+                        break;
+                    }
+                }
+            }
+            if files_disconnected && !state.files.done {
+                state.set_files_done();
                 needs_redraw = true;
             }
 

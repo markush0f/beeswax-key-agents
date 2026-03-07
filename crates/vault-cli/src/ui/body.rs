@@ -4,7 +4,7 @@ use ratatui::{
     style::{Color, Modifier, Style},
     text::{Line, Span},
     widgets::{
-        Bar, BarChart, BarGroup, Block, BorderType, Borders, Gauge, List, ListItem,
+        Bar, BarChart, BarGroup, Block, BorderType, Borders, List, ListItem,
         ListState as TuiListState, Paragraph, Wrap,
     },
 };
@@ -36,6 +36,13 @@ fn render_findings_panel(frame: &mut Frame, state: &AppState, area: Rect) {
             state.ides.scroll(),
             "IDES Findings",
             Color::Magenta,
+        ),
+        Tab::Files => (
+            &state.files.items,
+            state.files.selected(),
+            state.files.scroll(),
+            "FILES (hardcoded)",
+            Color::Cyan,
         ),
     };
 
@@ -142,21 +149,6 @@ fn render_selected_card(frame: &mut Frame, state: &AppState, area: Rect) {
             Span::raw(item.line_number.to_string()),
         ]),
         Line::from(vec![
-            Span::styled("Type: ", Style::default().fg(Color::Gray)),
-            Span::styled(
-                if item.hardcoded {
-                    "HARDCODED"
-                } else {
-                    "POSSIBLE REF"
-                },
-                if item.hardcoded {
-                    Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)
-                } else {
-                    Style::default().fg(Color::Yellow)
-                },
-            ),
-        ]),
-        Line::from(vec![
             Span::styled("Key: ", Style::default().fg(Color::Gray)),
             Span::raw(item.key.clone()),
         ]),
@@ -168,51 +160,28 @@ fn render_selected_card(frame: &mut Frame, state: &AppState, area: Rect) {
 fn render_stats_card(frame: &mut Frame, state: &AppState, area: Rect) {
     let active = state.active_list();
     let total = active.len();
-    let hardcoded = active.items.iter().filter(|m| m.hardcoded).count();
-    let refs = total.saturating_sub(hardcoded);
-
-    let ratio = if total == 0 {
-        0.0
-    } else {
-        hardcoded as f64 / total as f64
-    };
-
-    let border_color = if ratio >= 0.5 {
-        Color::Red
-    } else if ratio > 0.0 {
-        Color::Yellow
-    } else {
-        Color::Green
-    };
 
     let block = Block::default()
         .title(Span::styled(
-            " Risk & Volume ",
+            " Scan Summary ",
             Style::default()
                 .fg(Color::White)
                 .add_modifier(Modifier::BOLD),
         ))
         .borders(Borders::ALL)
         .border_type(BorderType::Rounded)
-        .border_style(Style::default().fg(border_color));
+        .border_style(Style::default().fg(Color::DarkGray));
     let inner = block.inner(area);
     frame.render_widget(block, area);
 
     let rows = Layout::default()
         .direction(Direction::Vertical)
-        .constraints([
-            Constraint::Length(1),
-            Constraint::Length(1),
-            Constraint::Length(2),
-        ])
+        .constraints([Constraint::Length(1), Constraint::Length(1)])
         .split(inner);
 
     frame.render_widget(
-        Paragraph::new(Line::from(format!(
-            "Total {} | Hardcoded {} | Ref {}",
-            total, hardcoded, refs
-        )))
-        .style(Style::default().fg(Color::White)),
+        Paragraph::new(Line::from(format!("Total findings {}", total)))
+            .style(Style::default().fg(Color::White)),
         rows[0],
     );
 
@@ -231,18 +200,6 @@ fn render_stats_card(frame: &mut Frame, state: &AppState, area: Rect) {
             ),
         ])),
         rows[1],
-    );
-
-    frame.render_widget(
-        Gauge::default()
-            .gauge_style(Style::default().fg(if ratio >= 0.5 {
-                Color::Red
-            } else {
-                Color::Yellow
-            }))
-            .ratio(ratio)
-            .label(format!("{:.0}% hardcoded", ratio * 100.0)),
-        rows[2],
     );
 }
 
@@ -339,18 +296,8 @@ fn render_provider_card(frame: &mut Frame, state: &AppState, area: Rect) {
 
 fn render_match_line(m: &vault_core::KeyMatch) -> Line<'static> {
     let provider = Span::styled(format!("[{}]", m.provider), provider_style(&m.provider));
-
-    let hardcoded = if m.hardcoded {
-        Span::styled(
-            "[HARDCODED]",
-            Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
-        )
-    } else {
-        Span::styled("[POSSIBLE REF]", Style::default().fg(Color::Yellow))
-    };
-
     let rest = format!(" {}:{}  {}", m.file_path.display(), m.line_number, m.key);
-    Line::from(vec![provider, Span::raw(" "), hardcoded, Span::raw(rest)])
+    Line::from(vec![provider, Span::raw(rest)])
 }
 
 fn provider_style(provider: &str) -> Style {

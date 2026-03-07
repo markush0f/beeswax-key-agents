@@ -42,7 +42,7 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect, tick: u64) {
         rows[0],
     );
     frame.render_widget(
-        Paragraph::new("Left/Right/TAB switch view | Up/Down select | q quit")
+        Paragraph::new("Left/Right/TAB switch view | e/i/f | Up/Down select | q quit")
             .style(Style::default().fg(Color::DarkGray)),
         rows[1],
     );

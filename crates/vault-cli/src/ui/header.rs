@@ -81,6 +81,17 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect, tick: u64) {
             .bg(Color::Yellow)
             .add_modifier(Modifier::BOLD)
     };
+    let files_status = if state.files.done {
+        Style::default()
+            .fg(Color::Black)
+            .bg(Color::Green)
+            .add_modifier(Modifier::BOLD)
+    } else {
+        Style::default()
+            .fg(Color::Black)
+            .bg(Color::Yellow)
+            .add_modifier(Modifier::BOLD)
+    };
 
     let health = Paragraph::new(Line::from(vec![
         Span::styled(" ENV ", Style::default().fg(Color::DarkGray)),
@@ -93,6 +104,16 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect, tick: u64) {
         Span::styled(
             if state.ides.done { " READY " } else { " SCAN " },
             ide_status,
+        ),
+        Span::raw(" "),
+        Span::styled(" FILES ", Style::default().fg(Color::DarkGray)),
+        Span::styled(
+            if state.files.done {
+                " READY "
+            } else {
+                " SCAN "
+            },
+            files_status,
         ),
         Span::raw(" "),
         Span::styled(spinner_ascii(tick), Style::default().fg(Color::DarkGray)),
@@ -115,9 +136,16 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect, tick: u64) {
                 .fg(Color::White)
                 .add_modifier(Modifier::BOLD),
         ),
+        Span::styled(" | FILES ", Style::default().fg(Color::Gray)),
+        Span::styled(
+            state.files.len().to_string(),
+            Style::default()
+                .fg(Color::White)
+                .add_modifier(Modifier::BOLD),
+        ),
         Span::styled(" | TOTAL ", Style::default().fg(Color::Gray)),
         Span::styled(
-            (state.env.len() + state.ides.len()).to_string(),
+            (state.env.len() + state.ides.len() + state.files.len()).to_string(),
             Style::default()
                 .fg(Color::Cyan)
                 .add_modifier(Modifier::BOLD),
@@ -163,10 +191,21 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect, tick: u64) {
                 spinner_ascii(tick)
             },
         )),
+        Line::from(format!(
+            "  FILES ({}) {} {}  ",
+            state.files.len(),
+            if state.files.done { "DONE" } else { "SCAN" },
+            if state.files.done {
+                " "
+            } else {
+                spinner_ascii(tick)
+            },
+        )),
     ])
     .select(match state.tab {
         Tab::Env => 0,
         Tab::Ides => 1,
+        Tab::Files => 2,
     })
     .highlight_style(
         Style::default()
@@ -183,6 +222,8 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect, tick: u64) {
         Span::styled(" ENV  ", Style::default().fg(Color::DarkGray)),
         Span::styled("[I]", Style::default().fg(Color::Cyan)),
         Span::styled(" IDES  ", Style::default().fg(Color::DarkGray)),
+        Span::styled("[F]", Style::default().fg(Color::Cyan)),
+        Span::styled(" FILES  ", Style::default().fg(Color::DarkGray)),
         Span::styled("[TAB]", Style::default().fg(Color::Cyan)),
         Span::styled(" SWITCH  ", Style::default().fg(Color::DarkGray)),
         Span::styled("[Q]", Style::default().fg(Color::Cyan)),

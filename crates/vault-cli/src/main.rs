@@ -36,16 +36,18 @@ fn main() {
     let scan = spawn_scanners(scan_path.clone());
 
     let state = AppState::new(scan_path);
-    let state = App::run(state, scan.env_rx, scan.ide_rx);
+    let state = App::run(state, scan.env_rx, scan.ide_rx, scan.files_rx);
 
     let _ = scan.env_handle.join();
     let _ = scan.ide_handle.join();
+    let _ = scan.files_handle.join();
 
     println!(
-        "{} .env: {}, IDES: {}",
+        "{} .env: {}, IDES: {}, FILES: {}",
         "Resumen:".cyan().bold(),
         state.env.len(),
-        state.ides.len()
+        state.ides.len(),
+        state.files.len()
     );
 }
 
