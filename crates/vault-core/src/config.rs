@@ -56,6 +56,7 @@ pub const EXCLUDED_DIRS: &[&str] = &[
     "temp",
     "logs",
     "log",
+    ".vscode-server"
 ];
 
 pub const IDE_DIRS: &[&str] = &[".antigravity-server", ".vscode", ".idea"];

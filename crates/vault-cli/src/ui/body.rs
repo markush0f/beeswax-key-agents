@@ -258,7 +258,7 @@ fn render_provider_card(frame: &mut Frame, state: &AppState, area: Rect) {
         Bar::default()
             .value(anthropic)
             .label("Anthro".into())
-            .style(Style::default().fg(Color::Yellow))
+            .style(Style::default().fg(Color::Rgb(255, 165, 0)))
             .value_style(
                 Style::default()
                     .fg(Color::White)
@@ -314,7 +314,7 @@ fn provider_style(provider: &str) -> Style {
     }
     if provider.contains("anthropic") {
         return Style::default()
-            .fg(Color::Yellow)
+            .fg(Color::Rgb(255, 165, 0))
             .add_modifier(Modifier::BOLD);
     }
     Style::default().fg(Color::Gray)

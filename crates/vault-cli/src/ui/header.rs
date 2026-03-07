@@ -49,7 +49,7 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect, tick: u64) {
             Span::raw(" "),
             Span::styled("[Gemini]", Style::default().fg(Color::Blue)),
             Span::raw(" "),
-            Span::styled("[Anthropic]", Style::default().fg(Color::Yellow)),
+            Span::styled("[Anthropic]", Style::default().fg(Color::Rgb(255, 165, 0))),
         ]),
     ]);
     frame.render_widget(brand, top[0]);

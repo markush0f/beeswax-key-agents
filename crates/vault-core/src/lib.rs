@@ -111,9 +111,6 @@ where
     let root = Path::new(path);
 
     for dir_name in IDE_DIRS {
-        if is_excluded_dir_name(dir_name) {
-            continue;
-        }
         let ide_root = root.join(dir_name);
         if !ide_root.is_dir() {
             continue;
