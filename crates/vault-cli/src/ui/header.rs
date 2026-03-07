@@ -11,10 +11,16 @@ use crate::state::{AppState, Tab};
 use super::common::{elide_middle, spinner_ascii};
 
 pub fn render(frame: &mut Frame, state: &AppState, area: Rect, tick: u64) {
+    let accent = match state.tab {
+        Tab::Env => Color::Green,
+        Tab::Ides => Color::Magenta,
+        Tab::Files => Color::Cyan,
+    };
+
     let block = Block::default()
         .borders(Borders::ALL)
         .border_type(BorderType::Rounded)
-        .border_style(Style::default().fg(Color::DarkGray));
+        .border_style(Style::default().fg(accent));
     let inner = block.inner(area);
     frame.render_widget(block, area);
 
@@ -154,16 +160,31 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect, tick: u64) {
     .alignment(Alignment::Right);
     frame.render_widget(summary, stats_rows[1]);
 
+    let mid = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Percentage(80), Constraint::Percentage(20)])
+        .split(rows[1]);
+
     let scan_path = elide_middle(
         &state.scan_path,
-        usize::from(rows[1].width).saturating_sub(14).max(8),
+        usize::from(mid[0].width).saturating_sub(14).max(8),
     );
     let path_line = Paragraph::new(Line::from(vec![
         Span::styled("SCAN PATH  ", Style::default().fg(Color::DarkGray)),
         Span::styled(scan_path, Style::default().fg(Color::White)),
     ]))
     .alignment(Alignment::Left);
-    frame.render_widget(path_line, rows[1]);
+    frame.render_widget(path_line, mid[0]);
+
+    let cache_badge = Paragraph::new(Line::from(Span::styled(
+        " CACHE ON ",
+        Style::default()
+            .fg(Color::Black)
+            .bg(Color::Green)
+            .add_modifier(Modifier::BOLD),
+    )))
+    .alignment(Alignment::Right);
+    frame.render_widget(cache_badge, mid[1]);
 
     let bottom = Layout::default()
         .direction(Direction::Vertical)
@@ -210,7 +231,7 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect, tick: u64) {
     .highlight_style(
         Style::default()
             .fg(Color::Black)
-            .bg(Color::Cyan)
+            .bg(accent)
             .add_modifier(Modifier::BOLD),
     )
     .style(Style::default().fg(Color::DarkGray))

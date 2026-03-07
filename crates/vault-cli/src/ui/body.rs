@@ -72,7 +72,15 @@ fn render_findings_panel(frame: &mut Frame, state: &AppState, area: Rect) {
     } else {
         visible
             .iter()
-            .map(|m| ListItem::new(render_match_line(m)))
+            .enumerate()
+            .map(|(i, m)| {
+                let base = if i % 2 == 0 {
+                    Style::default().fg(Color::White)
+                } else {
+                    Style::default().fg(Color::Gray)
+                };
+                ListItem::new(render_match_line(m)).style(base)
+            })
             .collect()
     };
 
@@ -85,7 +93,8 @@ fn render_findings_panel(frame: &mut Frame, state: &AppState, area: Rect) {
     let list = List::new(list_items)
         .highlight_style(
             Style::default()
-                .bg(Color::DarkGray)
+                .bg(accent)
+                .fg(Color::Black)
                 .add_modifier(Modifier::BOLD),
         )
         .highlight_symbol("▸ ");
@@ -135,7 +144,22 @@ fn render_selected_card(frame: &mut Frame, state: &AppState, area: Rect) {
     let idx = active.selected().min(active.items.len().saturating_sub(1));
     let item = &active.items[idx];
 
+    let scope = match state.tab {
+        Tab::Env => "ENV",
+        Tab::Ides => "IDES",
+        Tab::Files => "FILES",
+    };
+
     let lines = vec![
+        Line::from(vec![
+            Span::styled("Scope: ", Style::default().fg(Color::Gray)),
+            Span::styled(
+                scope,
+                Style::default()
+                    .fg(Color::Cyan)
+                    .add_modifier(Modifier::BOLD),
+            ),
+        ]),
         Line::from(vec![
             Span::styled("Provider: ", Style::default().fg(Color::Gray)),
             Span::styled(item.provider.clone(), provider_style(&item.provider)),
