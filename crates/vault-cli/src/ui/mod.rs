@@ -13,7 +13,7 @@ use crate::state::AppState;
 
 pub use terminal::{TerminalGuard, make_terminal};
 
-pub const HEADER_HEIGHT: u16 = 7;
+pub const HEADER_HEIGHT: u16 = 8;
 pub const FOOTER_HEIGHT: u16 = 2;
 
 pub fn viewport_height(size: Size) -> usize {

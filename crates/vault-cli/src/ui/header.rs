@@ -30,40 +30,32 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect, tick: u64) {
             Constraint::Length(2),
             Constraint::Length(1),
             Constraint::Length(2),
+            Constraint::Length(1),
         ])
         .split(inner);
 
     let top = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints([Constraint::Percentage(60), Constraint::Percentage(40)])
+        .constraints([Constraint::Percentage(70), Constraint::Percentage(30)])
         .split(rows[0]);
 
-    let brand = Paragraph::new(vec![
-        Line::from(vec![
-            Span::styled(
-                " VAULT SCANNER ",
-                Style::default()
-                    .fg(Color::Black)
-                    .bg(Color::Cyan)
-                    .add_modifier(Modifier::BOLD),
-            ),
-            Span::raw("  "),
-            Span::styled("real-time secret monitor", Style::default().fg(Color::Gray)),
-        ]),
-        Line::from(vec![
-            Span::styled("[OpenAI]", Style::default().fg(Color::Green)),
-            Span::raw(" "),
-            Span::styled("[Gemini]", Style::default().fg(Color::Blue)),
-            Span::raw(" "),
-            Span::styled("[Anthropic]", Style::default().fg(Color::Rgb(255, 165, 0))),
-        ]),
-    ]);
+    let brand = Paragraph::new(Line::from(vec![
+        Span::styled(
+            "VAULT",
+            Style::default()
+                .fg(Color::White)
+                .add_modifier(Modifier::BOLD),
+        ),
+        Span::raw(" "),
+        Span::styled(
+            "SECRET SCANNER",
+            Style::default().fg(accent).add_modifier(Modifier::BOLD),
+        ),
+        Span::raw("  "),
+        Span::styled("live console", Style::default().fg(Color::DarkGray)),
+    ]))
+    .alignment(Alignment::Left);
     frame.render_widget(brand, top[0]);
-
-    let stats_rows = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([Constraint::Length(1), Constraint::Length(1)])
-        .split(top[1]);
 
     let env_status = if state.env.done {
         Style::default()
@@ -121,11 +113,16 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect, tick: u64) {
             },
             files_status,
         ),
-        Span::raw(" "),
-        Span::styled(spinner_ascii(tick), Style::default().fg(Color::DarkGray)),
+        Span::raw("  "),
+        Span::styled(
+            spinner_ascii(tick),
+            Style::default()
+                .fg(Color::DarkGray)
+                .add_modifier(Modifier::BOLD),
+        ),
     ]))
     .alignment(Alignment::Right);
-    frame.render_widget(health, stats_rows[0]);
+    frame.render_widget(health, top[1]);
 
     let summary = Paragraph::new(Line::from(vec![
         Span::styled("ENV ", Style::default().fg(Color::Gray)),
@@ -157,39 +154,24 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect, tick: u64) {
                 .add_modifier(Modifier::BOLD),
         ),
     ]))
-    .alignment(Alignment::Right);
-    frame.render_widget(summary, stats_rows[1]);
-
-    let mid = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([Constraint::Percentage(80), Constraint::Percentage(20)])
-        .split(rows[1]);
+    .alignment(Alignment::Left);
+    frame.render_widget(summary, rows[1]);
 
     let scan_path = elide_middle(
         &state.scan_path,
-        usize::from(mid[0].width).saturating_sub(14).max(8),
+        usize::from(rows[2].width).saturating_sub(14).max(8),
     );
     let path_line = Paragraph::new(Line::from(vec![
         Span::styled("SCAN PATH  ", Style::default().fg(Color::DarkGray)),
         Span::styled(scan_path, Style::default().fg(Color::White)),
     ]))
     .alignment(Alignment::Left);
-    frame.render_widget(path_line, mid[0]);
-
-    let cache_badge = Paragraph::new(Line::from(Span::styled(
-        " CACHE ON ",
-        Style::default()
-            .fg(Color::Black)
-            .bg(Color::Green)
-            .add_modifier(Modifier::BOLD),
-    )))
-    .alignment(Alignment::Right);
-    frame.render_widget(cache_badge, mid[1]);
+    frame.render_widget(path_line, rows[2]);
 
     let bottom = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([Constraint::Length(1), Constraint::Length(1)])
-        .split(rows[2]);
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Percentage(70), Constraint::Percentage(30)])
+        .split(rows[3]);
 
     let tabs = Tabs::new(vec![
         Line::from(format!(
@@ -238,18 +220,23 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect, tick: u64) {
     .divider("  ");
     frame.render_widget(tabs, bottom[0]);
 
-    let shortcuts = Paragraph::new(Line::from(vec![
-        Span::styled("[E]", Style::default().fg(Color::Cyan)),
-        Span::styled(" ENV  ", Style::default().fg(Color::DarkGray)),
-        Span::styled("[I]", Style::default().fg(Color::Cyan)),
-        Span::styled(" IDES  ", Style::default().fg(Color::DarkGray)),
-        Span::styled("[F]", Style::default().fg(Color::Cyan)),
-        Span::styled(" FILES  ", Style::default().fg(Color::DarkGray)),
-        Span::styled("[TAB]", Style::default().fg(Color::Cyan)),
-        Span::styled(" SWITCH  ", Style::default().fg(Color::DarkGray)),
-        Span::styled("[Q]", Style::default().fg(Color::Cyan)),
-        Span::styled(" QUIT", Style::default().fg(Color::DarkGray)),
+    let cache_badge = Paragraph::new(Line::from(vec![
+        Span::styled(
+            " CACHE ",
+            Style::default()
+                .fg(Color::Black)
+                .bg(Color::Green)
+                .add_modifier(Modifier::BOLD),
+        ),
+        Span::styled(" BLAKE3 ", Style::default().fg(Color::DarkGray)),
+        Span::styled(
+            " ON ",
+            Style::default()
+                .fg(Color::Black)
+                .bg(Color::Green)
+                .add_modifier(Modifier::BOLD),
+        ),
     ]))
-    .alignment(Alignment::Center);
-    frame.render_widget(shortcuts, bottom[1]);
+    .alignment(Alignment::Right);
+    frame.render_widget(cache_badge, bottom[1]);
 }
