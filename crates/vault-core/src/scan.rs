@@ -30,13 +30,13 @@ where
             continue;
         }
 
-        if let Some(cached) = cache.get_matches(p) {
-            emit_cached_matches(p, cached, &mut on_match);
-            continue;
-        }
-
         if let Some(content) = read_text_file(p) {
             let content_hash = blake3::hash(content.as_bytes()).to_hex().to_string();
+            if let Some(cached) = cache.get_matches_with_hash(p, &content_hash) {
+                emit_cached_matches(p, cached, &mut on_match);
+                continue;
+            }
+
             let mut cached_matches = Vec::new();
             find_matches_in_content_streaming_with_hash(
                 p,
@@ -86,14 +86,14 @@ where
             continue;
         }
 
-        if let Some(cached) = cache.get_matches(p) {
-            emit_cached_matches(p, cached, &mut on_match);
-            continue;
-        }
-
         if let Some(content) = read_text_file(p) {
             let hardcoded_by_default = is_env_file(p);
             let content_hash = blake3::hash(content.as_bytes()).to_hex().to_string();
+            if let Some(cached) = cache.get_matches_with_hash(p, &content_hash) {
+                emit_cached_matches(p, cached, &mut on_match);
+                continue;
+            }
+
             let mut cached_matches = Vec::new();
             find_matches_in_content_streaming_with_hash(
                 p,
@@ -137,13 +137,13 @@ where
             continue;
         }
 
-        if let Some(cached) = cache.get_matches(p) {
-            emit_cached_matches(p, cached, &mut on_match);
-            continue;
-        }
-
         if let Some(content) = read_text_file(p) {
             let content_hash = blake3::hash(content.as_bytes()).to_hex().to_string();
+            if let Some(cached) = cache.get_matches_with_hash(p, &content_hash) {
+                emit_cached_matches(p, cached, &mut on_match);
+                continue;
+            }
+
             let mut cached_matches = Vec::new();
             find_matches_in_content_streaming_with_hash(
                 p,
@@ -188,13 +188,13 @@ where
                 continue;
             }
 
-            if let Some(cached) = cache.get_matches(p) {
-                emit_cached_matches(p, cached, &mut on_match);
-                continue;
-            }
-
             if let Some(content) = read_text_file(p) {
                 let content_hash = blake3::hash(content.as_bytes()).to_hex().to_string();
+                if let Some(cached) = cache.get_matches_with_hash(p, &content_hash) {
+                    emit_cached_matches(p, cached, &mut on_match);
+                    continue;
+                }
+
                 let mut cached_matches = Vec::new();
                 find_matches_in_content_streaming_with_hash(
                     p,

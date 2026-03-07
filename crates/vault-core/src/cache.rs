@@ -49,12 +49,11 @@ impl Cache {
         }
     }
 
-    pub fn get_matches(&self, path: &Path) -> Option<&[CacheMatch]> {
+    pub fn get_matches_with_hash(&self, path: &Path, content_hash: &str) -> Option<&[CacheMatch]> {
         let key = path_key(&self.root, path);
         let entry = self.index.entries.get(&key)?;
-        let (mtime_secs, size_bytes) = file_signature(path)?;
 
-        if entry.mtime_secs == mtime_secs && entry.size_bytes == size_bytes {
+        if entry.content_hash == content_hash {
             return Some(entry.matches.as_slice());
         }
 
