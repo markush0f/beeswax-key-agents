@@ -15,7 +15,7 @@ use super::common::{elide_middle, spinner_ascii};
 const HEADER_ART_FILE: &str = ".vault-header.txt";
 const LOGO_MAX_LINES: usize = 6;
 const LEFT_MIN_WIDTH: u16 = 36;
-const LEFT_INFO_LINES: u16 = 5;
+const LEFT_INFO_LINES: u16 = 6;
 static HEADER_ART: OnceLock<Vec<String>> = OnceLock::new();
 
 pub fn render(frame: &mut Frame, state: &AppState, area: Rect, tick: u64) {
@@ -45,6 +45,7 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect, tick: u64) {
     let left = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
+            Constraint::Length(1),
             Constraint::Length(1),
             Constraint::Length(1),
             Constraint::Length(1),
@@ -97,13 +98,13 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect, tick: u64) {
             if state.env.done { " READY " } else { " SCAN " },
             env_status,
         ),
-        Span::raw(" "),
+        Span::raw("   "),
         Span::styled(" IDES ", Style::default().fg(Color::DarkGray)),
         Span::styled(
             if state.ides.done { " READY " } else { " SCAN " },
             ide_status,
         ),
-        Span::raw(" "),
+        Span::raw("   "),
         Span::styled(" FILES ", Style::default().fg(Color::DarkGray)),
         Span::styled(
             if state.files.done {
@@ -113,7 +114,7 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect, tick: u64) {
             },
             files_status,
         ),
-        Span::raw("  "),
+        Span::raw("   "),
         Span::styled(
             spinner_ascii(tick),
             Style::default()
@@ -132,21 +133,21 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect, tick: u64) {
                 .fg(Color::White)
                 .add_modifier(Modifier::BOLD),
         ),
-        Span::styled(" | IDES ", Style::default().fg(Color::Gray)),
+        Span::styled("  |  IDES ", Style::default().fg(Color::Gray)),
         Span::styled(
             state.ides.len().to_string(),
             Style::default()
                 .fg(Color::White)
                 .add_modifier(Modifier::BOLD),
         ),
-        Span::styled(" | FILES ", Style::default().fg(Color::Gray)),
+        Span::styled("  |  FILES ", Style::default().fg(Color::Gray)),
         Span::styled(
             state.files.len().to_string(),
             Style::default()
                 .fg(Color::White)
                 .add_modifier(Modifier::BOLD),
         ),
-        Span::styled(" | TOTAL ", Style::default().fg(Color::Gray)),
+        Span::styled("  |  TOTAL ", Style::default().fg(Color::Gray)),
         Span::styled(
             (state.env.len() + state.ides.len() + state.files.len()).to_string(),
             Style::default()
@@ -167,6 +168,8 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect, tick: u64) {
     ]))
     .alignment(Alignment::Left);
     frame.render_widget(path_line, left[2]);
+
+    frame.render_widget(Paragraph::new(""), left[3]);
 
     let tabs = Tabs::new(vec![
         Line::from(format!(
@@ -212,8 +215,8 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect, tick: u64) {
             .add_modifier(Modifier::BOLD),
     )
     .style(Style::default().fg(Color::DarkGray))
-    .divider(" ");
-    frame.render_widget(tabs, left[3]);
+    .divider("   ");
+    frame.render_widget(tabs, left[4]);
 
     let cache_badge = Paragraph::new(Line::from(vec![
         Span::styled(
@@ -233,7 +236,7 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect, tick: u64) {
         ),
     ]))
     .alignment(Alignment::Left);
-    frame.render_widget(cache_badge, left[4]);
+    frame.render_widget(cache_badge, left[5]);
 }
 
 fn build_logo_lines(accent: Color) -> Vec<Line<'static>> {
