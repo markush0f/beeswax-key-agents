@@ -3,23 +3,23 @@ use std::path::Path;
 use crate::patterns::SecretPattern;
 use crate::types::KeyMatch;
 
-pub fn find_matches_in_content_streaming<F>(
-    file_path: &Path,
-    content: &str,
-    patterns: &[SecretPattern],
-    hardcoded_by_default: bool,
-    on_match: &mut F,
-) where
-    F: FnMut(KeyMatch),
-{
-    find_matches_in_content_streaming_with_hash(
-        file_path,
-        content,
-        patterns,
-        hardcoded_by_default,
-        &mut |matched, _| on_match(matched),
-    );
-}
+// pub fn find_matches_in_content_streaming<F>(
+//     file_path: &Path,
+//     content: &str,
+//     patterns: &[SecretPattern],
+//     hardcoded_by_default: bool,
+//     on_match: &mut F,
+// ) where
+//     F: FnMut(KeyMatch),
+// {
+//     find_matches_in_content_streaming_with_hash(
+//         file_path,
+//         content,
+//         patterns,
+//         hardcoded_by_default,
+//         &mut |matched, _| on_match(matched),
+//     );
+// }
 
 pub fn find_matches_in_content_streaming_with_hash<F>(
     file_path: &Path,

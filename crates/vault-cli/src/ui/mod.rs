@@ -13,21 +13,22 @@ use crate::state::AppState;
 
 pub use terminal::{TerminalGuard, make_terminal};
 
-pub const HEADER_HEIGHT: u16 = 8;
 pub const FOOTER_HEIGHT: u16 = 2;
 
 pub fn viewport_height(size: Size) -> usize {
+    let header_h = header::preferred_height();
     usize::from(size.height)
-        .saturating_sub(usize::from(HEADER_HEIGHT + FOOTER_HEIGHT))
+        .saturating_sub(usize::from(header_h + FOOTER_HEIGHT))
         .saturating_sub(2)
 }
 
 pub fn draw(frame: &mut Frame, state: &AppState, tick: u64) {
     let root = frame.area();
+    let header_h = header::preferred_height();
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(HEADER_HEIGHT),
+            Constraint::Length(header_h),
             Constraint::Min(1),
             Constraint::Length(FOOTER_HEIGHT),
         ])
