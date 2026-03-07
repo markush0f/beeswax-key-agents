@@ -1,3 +1,4 @@
+// Directories skipped by general/project scans (not applied to IDE scans).
 pub const EXCLUDED_DIRS: &[&str] = &[
     ".git",
     ".hg",
@@ -59,4 +60,5 @@ pub const EXCLUDED_DIRS: &[&str] = &[
     ".vscode-server",
 ];
 
+// IDE roots scanned explicitly by the IDE scanner.
 pub const IDE_DIRS: &[&str] = &[".antigravity-server", ".vscode", ".idea"];
