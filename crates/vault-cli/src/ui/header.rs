@@ -2,17 +2,6 @@
 //!
 //! The header spans the top of the TUI. Its layout adapts to the available terminal width:
 //!
-//! ```text
-//! ┌── left info column (min 56 cols) ──┬── logo (ASCII art, right-aligned) ──┐
-//! │  SCAN TARGET                       │  ██  █ █  ████  █  ████            │
-//! │  /path/to/scan                     │  ...                                │
-//! │  RESULTS ENV 3 | IDES 1 | FILES 0  │                                     │
-//! │  STATUS ENV READY | IDES SCAN ...  │                                     │
-//! │  MODE LIVE STREAM  VIEW ENV        │                                     │
-//! ├────────────────────────────────────┴─────────────────────────────────────┤
-//! │  HOTKEYS [E] ENV [I] IDES [F] FILES  │  ENV (3) SCAN -  IDES  FILES     │
-//! └──────────────────────────────────────────────────────────────────────────┘
-//! ```
 //!
 //! ## ASCII Art Logo
 //!

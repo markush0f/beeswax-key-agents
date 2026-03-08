@@ -19,12 +19,12 @@
 /// # Examples
 ///
 /// ```rust
-/// // Calling with consecutive ticks produces a rotating animation:
-/// // tick 0 → "-"
-/// // tick 1 → "\"
-/// // tick 2 → "|"
-/// // tick 3 → "/"
-/// // tick 4 → "-"  (wraps back)
+///  Calling with consecutive ticks produces a rotating animation:
+///  tick 0 → "-"
+///  tick 1 → "\"
+///  tick 2 → "|"
+///  tick 3 → "/"
+///  tick 4 → "-"  (wraps back)
 /// ```
 pub fn spinner_ascii(tick: u64) -> &'static str {
     const FRAMES: [&str; 4] = ["-", "\\", "|", "/"];
