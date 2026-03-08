@@ -91,10 +91,27 @@ echo ""
 
 # Check if INSTALL_DIR is in PATH
 if [[ ":$PATH:" != *":$INSTALL_DIR:"* ]]; then
-    echo -e "${RED}WARNING: $INSTALL_DIR is not in your PATH.${NC}"
-    echo "To use 'bkad' from anywhere, you must add this line to your ~/.bashrc or ~/.zshrc:"
-    echo -e "${CYAN}export PATH=\"$INSTALL_DIR:\$PATH\"${NC}"
-    echo "Then restart your terminal or run: source ~/.bashrc"
+    echo -e "${CYAN}Adding $INSTALL_DIR to your PATH automatically...${NC}"
+    
+    # Try to detect which shell config to use
+    SHELL_RC=""
+    if [ -n "$BASH_VERSION" ] || [ -f "$HOME/.bashrc" ]; then
+        SHELL_RC="$HOME/.bashrc"
+    elif [ -n "$ZSH_VERSION" ] || [ -f "$HOME/.zshrc" ]; then
+        SHELL_RC="$HOME/.zshrc"
+    else
+        SHELL_RC="$HOME/.profile"
+    fi
+
+    if [ -n "$SHELL_RC" ]; then
+        echo -e "\nexport PATH=\"$INSTALL_DIR:\$PATH\"" >> "$SHELL_RC"
+        echo -e "${GREEN}Successfully added PATH to $SHELL_RC${NC}"
+        echo "Please restart your terminal or run: source $SHELL_RC"
+    else
+        echo -e "${RED}WARNING: Could not detect your shell configuration file.${NC}"
+        echo "Please add this line manually:"
+        echo -e "${CYAN}export PATH=\"$INSTALL_DIR:\$PATH\"${NC}"
+    fi
     echo ""
 fi
 
