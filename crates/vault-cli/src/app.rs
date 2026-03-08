@@ -1,8 +1,21 @@
-//! Main generic application loop.
+//! Application lifecycle controller and main event loop.
 //!
-//! This module contains the entrypoint `App` struct which establishes the terminal environment,
-//! polls updates from the scanner threads, processes keyboard input, and fires the
-//! UI render loop at a 33ms target rate (30fps).
+//! [`App`] is responsible for:
+//!
+//! - Initializing and tearing down the raw terminal environment through [`ui::TerminalGuard`].
+//! - Draining three MPSC receiver channels (env, IDE, and file matches) on every loop tick.
+//! - Routing keyboard events to [`AppState::handle_key`] and delegating redraw decisions.
+//! - Enforcing a target frame cap (≈ 30 FPS, minimum 33 ms between draws) to avoid
+//!   burning CPU on idle frames while still feeling responsive.
+//!
+//! ## Event Loop Timing
+//!
+//! | Timer | Purpose |
+//! |---|---|
+//! | `poll(30ms)` | Crossterm input poll timeout — limits key latency. |
+//! | `33ms` since last render | Minimum time between full redraws (≈ 30 FPS). |
+//! | `125ms` forced tick | Forces a redraw even when no events arrive (for animations). |
+//! | `10ms` sleep | Prevents the loop from spinning at 100% CPU between events. |
 
 use std::sync::mpsc::{Receiver, TryRecvError};
 use std::time::{Duration, Instant};
@@ -15,15 +28,46 @@ use vault_core::KeyMatch;
 use crate::state::{AppAction, AppState};
 use crate::ui;
 
-/// Application lifecycle controller.
+/// Zero-sized application controller.
+///
+/// `App` holds no state of its own — all application state lives in [`AppState`].
+/// Its only role is to own the terminal lifecycle and drive the event loop.
 pub struct App;
 
 impl App {
-    /// Mounts the TUI interface, claiming the terminal viewport, and holds execution
-    /// until the user triggers a quit signal.
+    /// Enters TUI mode and runs the main event loop until the user signals an exit.
     ///
-    /// The event loop parses the state of three background jobs across the channels
-    /// to live-update the corresponding results lists.
+    /// On entry, the terminal is switched to raw mode and the alternate screen is
+    /// activated via [`ui::TerminalGuard`]. On exit (whether by user input or panic),
+    /// the guard restores the terminal to its original state.
+    ///
+    /// ## Channel Draining
+    ///
+    /// Each loop iteration drains all three receivers non-blockingly using
+    /// [`Receiver::try_recv`]. Matches are pushed into the corresponding [`AppState`]
+    /// list, keeping the UI always up to date with the latest scanner output.
+    ///
+    /// When a channel becomes `Disconnected`, the corresponding scanner thread has
+    /// finished. The state's `done` flag is set, which the footer and UI widgets use
+    /// to display a "DONE" indicator.
+    ///
+    /// ## Rendering
+    ///
+    /// The UI is only redrawn when `needs_redraw` is `true` **and** at least 33 ms have
+    /// elapsed since the last frame. This decouples the data ingestion rate from the
+    /// rendering rate.
+    ///
+    /// # Arguments
+    ///
+    /// * `state` - Initial application state (scan path, empty lists).
+    /// * `env_rx` - Receiver for matches from the `.env` scanner thread.
+    /// * `ide_rx` - Receiver for matches from the IDE config scanner thread.
+    /// * `files_rx` - Receiver for matches from the project files scanner thread.
+    ///
+    /// # Returns
+    ///
+    /// The final [`AppState`] after the user exits, which the caller (`main`) uses to
+    /// print the summary line.
     pub fn run(
         mut state: AppState,
         env_rx: Receiver<KeyMatch>,

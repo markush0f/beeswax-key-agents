@@ -1,3 +1,32 @@
+//! Header panel — logo, scan info, status indicators, and tab bar.
+//!
+//! The header spans the top of the TUI. Its layout adapts to the available terminal width:
+//!
+//! ```text
+//! ┌── left info column (min 56 cols) ──┬── logo (ASCII art, right-aligned) ──┐
+//! │  SCAN TARGET                       │  ██  █ █  ████  █  ████            │
+//! │  /path/to/scan                     │  ...                                │
+//! │  RESULTS ENV 3 | IDES 1 | FILES 0  │                                     │
+//! │  STATUS ENV READY | IDES SCAN ...  │                                     │
+//! │  MODE LIVE STREAM  VIEW ENV        │                                     │
+//! ├────────────────────────────────────┴─────────────────────────────────────┤
+//! │  HOTKEYS [E] ENV [I] IDES [F] FILES  │  ENV (3) SCAN -  IDES  FILES     │
+//! └──────────────────────────────────────────────────────────────────────────┘
+//! ```
+//!
+//! ## ASCII Art Logo
+//!
+//! The logo is loaded once at startup from `.vault-header.txt` (located at the workspace root)
+//! via `include_str!`. It is cached in a [`OnceLock`] and rendered in the accent color of the
+//! active tab. If the file is empty or missing, `"Vault"` is used as the fallback.
+//!
+//! ## Dynamic Accent Color
+//!
+//! The border, logo, tab highlight, and some label styles change color based on the active tab:
+//! - `Env` → Green
+//! - `Ides` → Magenta
+//! - `Files` → Cyan
+
 use std::sync::OnceLock;
 
 use ratatui::{
@@ -20,6 +49,14 @@ const TABS_LINES: u16 = 1;
 
 static HEADER_ART: OnceLock<Vec<String>> = OnceLock::new();
 
+/// Renders the complete header panel including logo, info lines, and tab bar.
+///
+/// # Arguments
+///
+/// * `frame` - The ratatui frame to draw into.
+/// * `state` - Current application state.
+/// * `area` - Rectangular region allocated to the header by the root layout.
+/// * `tick` - Animation tick for the spinner in the tab bar.
 pub fn render(frame: &mut Frame, state: &AppState, area: Rect, tick: u64) {
     let accent = accent_color(state.tab);
     let block = Block::default()
@@ -73,6 +110,10 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect, tick: u64) {
     render_bottom_row(frame, state, sections[1], tick, accent);
 }
 
+/// Returns the preferred row height for the header, in terminal rows.
+///
+/// Computed as `max(logo_line_count, TOP_INFO_LINES) + TABS_LINES + 2` (for borders).
+/// Called by [`ui::viewport_height`](crate::ui::viewport_height) to calculate body space.
 pub fn preferred_height() -> u16 {
     logo_line_count().max(TOP_INFO_LINES) + TABS_LINES + 2
 }
@@ -330,6 +371,9 @@ fn build_logo_lines(accent: Color) -> Vec<Line<'static>> {
         .collect()
 }
 
+/// Returns the maximum line width (in columns) of the loaded logo art.
+///
+/// Used to allocate the right-side logo column in the header layout.
 pub(crate) fn logo_max_width() -> u16 {
     load_header_art()
         .iter()
@@ -339,6 +383,9 @@ pub(crate) fn logo_max_width() -> u16 {
         .unwrap_or(0)
 }
 
+/// Returns the number of lines in the loaded logo art (capped at [`LOGO_MAX_LINES`]).
+///
+/// Used by [`preferred_height`] to ensure the header is tall enough to show the full logo.
 pub(crate) fn logo_line_count() -> u16 {
     load_header_art().iter().take(LOGO_MAX_LINES).count() as u16
 }

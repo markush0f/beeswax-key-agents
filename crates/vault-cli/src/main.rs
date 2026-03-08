@@ -1,13 +1,15 @@
-//! `vault-cli` is the command-line interface and the visual TUI application for the Vault secret scanner.
+//! `vault-cli` — Interactive terminal dashboard for the Vault secret scanner.
 //!
-//! This executable coordinates the `vault-core` detection logic with a `ratatui`-based
-//! terminal interface. It spawns multithreaded scanners for `.env` files, IDE configs,
-//! and generic project files, displaying the results in real-time.
+//! This binary coordinates three components:
 //!
-//! # Features
-//! * Interactive TUI that handles live resizing, pausing, and pagination of results.
-//! * Scans multiple file classes (environment, IDE, and project) concurrently to
-//!   surface any potential secret leaks instantly.
+//! 1. **CLI parsing**: Resolves the scan path from the `--path` flag or an interactive prompt.
+//! 2. **Scanner threads**: Delegates to [`scanner::spawn_scanners`] to run three concurrent
+//!    `vault-core` scans (env files, IDE configs, and source code) in the background.
+//! 3. **TUI event loop**: Hands control to [`app::App::run`], which drives the `ratatui`
+//!    dashboard until the user exits.
+//!
+//! After the TUI exits, the scanner threads are joined and a one-line summary is printed
+//! to stdout showing the total number of findings per tab.
 
 mod app;
 mod scanner;
@@ -27,9 +29,11 @@ use crate::app::App;
 use crate::scanner::spawn_scanners;
 use crate::state::AppState;
 
+/// Command-line arguments accepted by the `bkad` binary.
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 struct Args {
+    /// Optional directory path to scan. If omitted, an interactive prompt is shown.
     #[arg(short, long)]
     path: Option<String>,
 }
@@ -64,11 +68,19 @@ fn main() {
     );
 }
 
-/// Resolves the intended directory to scan from user input.
+/// Resolves the directory to scan from the CLI flag or an interactive prompt.
 ///
-/// If a path was passed via the `--path` CLI flag, it is directly used.
-/// Otherwise, it prompts the user with an interactive text prompt, decaying gracefully
-/// to the user's home directory (`~`) or the current directory (`.`) as the default.
+/// Priority:
+/// 1. If `--path` was provided, use it directly.
+/// 2. Otherwise, show an `inquire` text prompt with the user's home directory
+///    as the default, falling back to `"."` if the home directory cannot be resolved.
+///
+/// If the user cancels the interactive prompt (e.g., via Ctrl+C), the process
+/// exits with code 1 and a user-friendly error message.
+///
+/// # Arguments
+///
+/// * `flag_path` - Value of the `--path` CLI argument, if provided.
 fn resolve_scan_path(flag_path: Option<String>) -> String {
     match flag_path {
         Some(p) => p,

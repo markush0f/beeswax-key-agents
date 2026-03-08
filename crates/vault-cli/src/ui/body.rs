@@ -13,6 +13,13 @@ use ratatui::{
 
 use crate::state::{AppState, Tab};
 
+/// Renders the entire body area, splitting it into the findings list and the side panel.
+///
+/// # Arguments
+///
+/// * `frame` - The ratatui frame to draw into.
+/// * `state` - Current application state (active tab, match lists, selection).
+/// * `area` - The rectangular region allocated to the body by the root layout.
 pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
     let cols = Layout::default()
         .direction(Direction::Horizontal)
@@ -23,6 +30,11 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect) {
     render_side_panel(frame, state, cols[1]);
 }
 
+/// Renders the scrollable list of secret matches for the active tab.
+///
+/// Applies alternating row background colors, a bold highlighted row for the
+/// selected item, and an accent color that changes with the active tab.
+/// Shows a placeholder message while no results have arrived yet.
 fn render_findings_panel(frame: &mut Frame, state: &AppState, area: Rect) {
     let (items, selected, scroll, base_title, accent) = match state.tab {
         Tab::Env => (
@@ -103,6 +115,7 @@ fn render_findings_panel(frame: &mut Frame, state: &AppState, area: Rect) {
     frame.render_stateful_widget(list, inner, &mut list_state);
 }
 
+/// Renders the right-side vertical stack of three info cards.
 fn render_side_panel(frame: &mut Frame, state: &AppState, area: Rect) {
     let rows = Layout::default()
         .direction(Direction::Vertical)
@@ -118,6 +131,10 @@ fn render_side_panel(frame: &mut Frame, state: &AppState, area: Rect) {
     render_provider_card(frame, state, rows[2]);
 }
 
+/// Renders a card displaying the full details of the currently selected match.
+///
+/// Shows scope, provider (with its registered color), file path, line number, and
+/// masked key. If the list is empty, shows a "No selected item" placeholder.
 fn render_selected_card(frame: &mut Frame, state: &AppState, area: Rect) {
     let block = Block::default()
         .title(Span::styled(
@@ -183,6 +200,10 @@ fn render_selected_card(frame: &mut Frame, state: &AppState, area: Rect) {
     frame.render_widget(Paragraph::new(lines).wrap(Wrap { trim: true }), inner);
 }
 
+/// Renders a compact summary card showing total findings and scanner status.
+///
+/// The status label reads `SCANNING` (yellow) while the background thread is active
+/// and switches to `DONE` (green) once the channel closes.
 fn render_stats_card(frame: &mut Frame, state: &AppState, area: Rect) {
     let active = state.active_list();
     let total = active.len();
@@ -229,6 +250,16 @@ fn render_stats_card(frame: &mut Frame, state: &AppState, area: Rect) {
     );
 }
 
+/// Renders a horizontal bar chart grouped by secret provider.
+///
+/// Match counts are aggregated dynamically by iterating over [`vault_core::patterns::get_patterns`].
+/// Each bar uses the `(r, g, b)` color registered on the corresponding [`SecretPattern`].
+/// Unrecognized providers are counted under an "Other" bar.
+///
+/// The bar width adapts responsively to the panel width:
+/// - ≥ 50 cols → 5-wide bars
+/// - ≥ 40 cols → 4-wide bars
+/// - < 40 cols → 3-wide bars
 fn render_provider_card(frame: &mut Frame, state: &AppState, area: Rect) {
     let block = Block::default()
         .title(Span::styled(
@@ -313,12 +344,24 @@ fn render_provider_card(frame: &mut Frame, state: &AppState, area: Rect) {
     frame.render_widget(chart, inner);
 }
 
+/// Formats a single [`KeyMatch`] into a colored [`Line`] for the findings list.
+///
+/// The provider name is rendered in its registered pattern color, followed by the
+/// file path, line number, and masked key value.
 fn render_match_line(m: &vault_core::KeyMatch) -> Line<'static> {
     let provider = Span::styled(format!("[{}]", m.provider), provider_style(&m.provider));
     let rest = format!(" {}:{}  {}", m.file_path.display(), m.line_number, m.key);
     Line::from(vec![provider, Span::raw(rest)])
 }
 
+/// Returns the ratatui [`Style`] registered for the given provider name.
+///
+/// Looks up the provider in [`vault_core::patterns::get_patterns`] by name substring match
+/// and returns its RGB color with bold modifier. Falls back to `Color::Gray` for unknown providers.
+///
+/// # Arguments
+///
+/// * `provider_str` - The `provider` field from a [`KeyMatch`].
 pub(crate) fn provider_style(provider_str: &str) -> Style {
     let patterns = vault_core::patterns::get_patterns();
 
