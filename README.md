@@ -45,10 +45,8 @@ This project employs a Cargo Workspace model, allowing flexibility for future in
 We've prepared a universal autoinstaller script. Just paste this in your terminal. It will instantly download the latest pre-compiled binary matching your architecture straight from GitHub Releases, dropping `bkad` directly into your `~/.local/bin` PATH.
 
 ```bash
-curl -fsSL https://github.com/markush0f/beeswax-key-agents | bash
+curl -fsSL https://github.com/markush0f/beeswax-key-agents/blob/main/install.sh | bash
 ```
-> **Setup Note**: Make sure to replace `YOUR_GITHUB_USER` in the URL above with the actual GitHub username holding this repository once you publish it.
-
 <details>
 <summary><b>Local Manual Installation for Developers</b></summary>
 
