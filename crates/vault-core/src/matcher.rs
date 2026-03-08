@@ -30,30 +30,37 @@ pub fn find_matches_in_content_streaming_with_hash<F>(
 ) where
     F: FnMut(KeyMatch, String),
 {
-    for (i, line) in content.lines().enumerate() {
-        for pattern in patterns {
-            for caps in pattern.regex.captures_iter(line) {
-                if let Some(matched) = caps.get(1) {
+    content
+        .lines()
+        .enumerate()
+        .flat_map(|(i, line)| {
+            patterns.iter().flat_map(move |pattern| {
+                pattern.regex.captures_iter(line).filter_map(move |caps| {
+                    let matched = caps.get(1)?;
                     let key = matched.as_str();
-                    if !pattern.allows_key(key) {
-                        continue;
-                    }
-                    let key_hash = blake3::hash(key.as_bytes()).to_hex().to_string();
 
-                    on_match(
-                        KeyMatch {
-                            file_path: file_path.to_path_buf(),
-                            line_number: i + 1,
-                            provider: pattern.name.to_string(),
-                            key: mask_key(key),
-                            hardcoded: hardcoded_by_default || is_hardcoded_in_line(line, key),
-                        },
-                        key_hash,
-                    );
-                }
-            }
-        }
-    }
+                    if !pattern.allows_key(key) {
+                        return None;
+                    }
+
+                    Some((i, line, pattern, key.to_string()))
+                })
+            })
+        })
+        .for_each(|(i, line, pattern, key)| {
+            let key_hash = blake3::hash(key.as_bytes()).to_hex().to_string();
+
+            on_match(
+                KeyMatch {
+                    file_path: file_path.to_path_buf(),
+                    line_number: i + 1,
+                    provider: pattern.name.to_string(),
+                    key: mask_key(&key),
+                    hardcoded: hardcoded_by_default || is_hardcoded_in_line(line, &key),
+                },
+                key_hash,
+            );
+        });
 }
 
 /// Applies a best-effort heuristic to determine if a matched secret is hardcoded in source code.

@@ -36,23 +36,22 @@ where
     let root = Path::new(path);
     let mut cache = Cache::load(root);
 
-    for entry in WalkDir::new(path).into_iter().filter_map(|e| e.ok()) {
-        let p = entry.path();
-
-        if !is_env_file(p) {
-            continue;
-        }
-
-        if let Some(content) = read_text_file(p) {
+    WalkDir::new(path)
+        .into_iter()
+        .filter_map(|e| e.ok())
+        .map(|e| e.into_path())
+        .filter(|p| is_env_file(p))
+        .filter_map(|p| read_text_file(&p).map(|content| (p, content)))
+        .for_each(|(p, content)| {
             let content_hash = blake3::hash(content.as_bytes()).to_hex().to_string();
-            if let Some(cached) = cache.get_matches_with_hash(p, &content_hash) {
-                emit_cached_matches(p, cached, &mut on_match);
-                continue;
+            if let Some(cached) = cache.get_matches_with_hash(&p, &content_hash) {
+                emit_cached_matches(&p, cached, &mut on_match);
+                return;
             }
 
             let mut cached_matches = Vec::new();
             find_matches_in_content_streaming_with_hash(
-                p,
+                &p,
                 &content,
                 &patterns_list,
                 true,
@@ -67,9 +66,8 @@ where
                     on_match(m);
                 },
             );
-            cache.store(p, content_hash, cached_matches);
-        }
-    }
+            cache.store(&p, content_hash, cached_matches);
+        });
 
     cache.save();
 }
@@ -98,28 +96,24 @@ where
     let root = Path::new(path);
     let mut cache = Cache::load(root);
 
-    for entry in WalkDir::new(path)
+    WalkDir::new(path)
         .into_iter()
         .filter_entry(|e| !is_ignored_dir(e.path()))
         .filter_map(|e| e.ok())
-    {
-        let p = entry.path();
-
-        if !is_scannable_file(p) {
-            continue;
-        }
-
-        if let Some(content) = read_text_file(p) {
-            let hardcoded_by_default = is_env_file(p);
+        .map(|e| e.into_path())
+        .filter(|p| is_scannable_file(p))
+        .filter_map(|p| read_text_file(&p).map(|content| (p, content)))
+        .for_each(|(p, content)| {
+            let hardcoded_by_default = is_env_file(&p);
             let content_hash = blake3::hash(content.as_bytes()).to_hex().to_string();
-            if let Some(cached) = cache.get_matches_with_hash(p, &content_hash) {
-                emit_cached_matches(p, cached, &mut on_match);
-                continue;
+            if let Some(cached) = cache.get_matches_with_hash(&p, &content_hash) {
+                emit_cached_matches(&p, cached, &mut on_match);
+                return;
             }
 
             let mut cached_matches = Vec::new();
             find_matches_in_content_streaming_with_hash(
-                p,
+                &p,
                 &content,
                 &patterns_list,
                 hardcoded_by_default,
@@ -134,9 +128,8 @@ where
                     on_match(m);
                 },
             );
-            cache.store(p, content_hash, cached_matches);
-        }
-    }
+            cache.store(&p, content_hash, cached_matches);
+        });
 
     cache.save();
 }
@@ -160,27 +153,23 @@ where
     let root = Path::new(path);
     let mut cache = Cache::load(root);
 
-    for entry in WalkDir::new(path)
+    WalkDir::new(path)
         .into_iter()
         .filter_entry(|e| !is_ignored_dir(e.path()))
         .filter_map(|e| e.ok())
-    {
-        let p = entry.path();
-
-        if !is_scannable_file(p) || is_env_file(p) {
-            continue;
-        }
-
-        if let Some(content) = read_text_file(p) {
+        .map(|e| e.into_path())
+        .filter(|p| is_scannable_file(p) && !is_env_file(p))
+        .filter_map(|p| read_text_file(&p).map(|content| (p, content)))
+        .for_each(|(p, content)| {
             let content_hash = blake3::hash(content.as_bytes()).to_hex().to_string();
-            if let Some(cached) = cache.get_matches_with_hash(p, &content_hash) {
-                emit_cached_matches(p, cached, &mut on_match);
-                continue;
+            if let Some(cached) = cache.get_matches_with_hash(&p, &content_hash) {
+                emit_cached_matches(&p, cached, &mut on_match);
+                return;
             }
 
             let mut cached_matches = Vec::new();
             find_matches_in_content_streaming_with_hash(
-                p,
+                &p,
                 &content,
                 &patterns_list,
                 false,
@@ -195,9 +184,8 @@ where
                     on_match(m);
                 },
             );
-            cache.store(p, content_hash, cached_matches);
-        }
-    }
+            cache.store(&p, content_hash, cached_matches);
+        });
 
     cache.save();
 }
@@ -219,46 +207,40 @@ where
     let root = Path::new(path);
     let mut cache = Cache::load(root);
 
-    for dir_name in IDE_DIRS {
-        let ide_root = root.join(dir_name);
-        if !ide_root.is_dir() {
-            continue;
-        }
-
-        for entry in WalkDir::new(&ide_root).into_iter().filter_map(|e| e.ok()) {
-            let p = entry.path();
-            if !is_scannable_file(p) {
-                continue;
+    IDE_DIRS
+        .iter()
+        .map(|dir_name| root.join(dir_name))
+        .filter(|ide_root| ide_root.is_dir())
+        .flat_map(|ide_root| WalkDir::new(ide_root).into_iter().filter_map(|e| e.ok()))
+        .map(|e| e.into_path())
+        .filter(|p| is_scannable_file(p))
+        .filter_map(|p| read_text_file(&p).map(|content| (p, content)))
+        .for_each(|(p, content)| {
+            let content_hash = blake3::hash(content.as_bytes()).to_hex().to_string();
+            if let Some(cached) = cache.get_matches_with_hash(&p, &content_hash) {
+                emit_cached_matches(&p, cached, &mut on_match);
+                return;
             }
 
-            if let Some(content) = read_text_file(p) {
-                let content_hash = blake3::hash(content.as_bytes()).to_hex().to_string();
-                if let Some(cached) = cache.get_matches_with_hash(p, &content_hash) {
-                    emit_cached_matches(p, cached, &mut on_match);
-                    continue;
-                }
-
-                let mut cached_matches = Vec::new();
-                find_matches_in_content_streaming_with_hash(
-                    p,
-                    &content,
-                    &patterns_list,
-                    false,
-                    &mut |m, key_hash| {
-                        cached_matches.push(CacheMatch {
-                            provider: m.provider.clone(),
-                            line_number: m.line_number,
-                            key_masked: m.key.clone(),
-                            hardcoded: m.hardcoded,
-                            key_hash,
-                        });
-                        on_match(m);
-                    },
-                );
-                cache.store(p, content_hash, cached_matches);
-            }
-        }
-    }
+            let mut cached_matches = Vec::new();
+            find_matches_in_content_streaming_with_hash(
+                &p,
+                &content,
+                &patterns_list,
+                false,
+                &mut |m, key_hash| {
+                    cached_matches.push(CacheMatch {
+                        provider: m.provider.clone(),
+                        line_number: m.line_number,
+                        key_masked: m.key.clone(),
+                        hardcoded: m.hardcoded,
+                        key_hash,
+                    });
+                    on_match(m);
+                },
+            );
+            cache.store(&p, content_hash, cached_matches);
+        });
 
     cache.save();
 }
