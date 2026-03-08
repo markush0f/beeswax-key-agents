@@ -27,7 +27,7 @@ pub fn get_patterns() -> Vec<SecretPattern> {
         SecretPattern {
             name: "Ollama API Key",
             regex: Regex::new(
-                r"(?:^|[^A-Za-z0-9])((?:ollama_[A-Za-z0-9_-]{20,}|sk-ollama-[A-Za-z0-9_-]{20,}))(?:$|[^A-Za-z0-9])",
+                r"(?:^|[^A-Za-z0-9])((?:ollama_[A-Za-z0-9_-]{20,}|sk-ollama-[A-Za-z0-9_-]{20,}|[0-9a-fA-F]{32}\.[A-Za-z0-9_-]{20,}))(?:$|[^A-Za-z0-9])",
             )
             .unwrap(),
         },
@@ -79,6 +79,22 @@ mod tests {
             .regex
             .captures(line)
             .expect("expected ollama key match");
+        assert!(caps.get(1).is_some());
+    }
+
+    #[test]
+    fn matches_ollama_native_token_format() {
+        let patterns = get_patterns();
+        let ollama = patterns
+            .iter()
+            .find(|p| p.name == "Ollama API Key")
+            .expect("ollama pattern should exist");
+
+        let line = r#"OLLAMA_API_KEY="0972b6f6eb88495aa1f9f581189104f1._VH6UlaBHFRMsQ0vj-sRZYDq""#;
+        let caps = ollama
+            .regex
+            .captures(line)
+            .expect("expected native ollama token format match");
         assert!(caps.get(1).is_some());
     }
 
