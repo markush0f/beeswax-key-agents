@@ -11,6 +11,8 @@ use clap::Parser;
 const MOCK_FILE_PREFIX: &str = "vault_env";
 const PROJECTS_PER_WORKSPACE: usize = 20;
 const TOKEN_CHARSET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-";
+const ALPHANUMERIC_CHARSET: &[u8] =
+    b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
 const HEX_CHARSET: &[u8] = b"abcdef0123456789";
 
 #[derive(Debug, Parser)]
@@ -107,6 +109,7 @@ fn build_fixture_contents(
     writeln!(content, "XAI_API_KEY={}", grok_key(random)?).unwrap();
     writeln!(content, "ANTHROPIC_API_KEY={}", anthropic_key(random)?).unwrap();
     writeln!(content, "OLLAMA_API_KEY={}", ollama_key(index, random)?).unwrap();
+    writeln!(content, "DEEPSEEK_API_KEY={}", deepseek_key(random)?).unwrap();
     Ok(content)
 }
 
@@ -163,6 +166,10 @@ fn ollama_key(index: usize, random: &mut RandomSource) -> io::Result<String> {
             random.sample(TOKEN_CHARSET, 24)?
         )),
     }
+}
+
+fn deepseek_key(random: &mut RandomSource) -> io::Result<String> {
+    Ok(format!("sk-{}", random.sample(ALPHANUMERIC_CHARSET, 32)?))
 }
 
 struct RandomSource {

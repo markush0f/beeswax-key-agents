@@ -248,6 +248,7 @@ fn render_provider_card(frame: &mut Frame, state: &AppState, area: Rect) {
     let mut grok = 0u64;
     let mut anthropic = 0u64;
     let mut ollama = 0u64;
+    let mut deepseek = 0u64;
     let mut other = 0u64;
 
     for item in &active.items {
@@ -264,6 +265,8 @@ fn render_provider_card(frame: &mut Frame, state: &AppState, area: Rect) {
             anthropic += 1;
         } else if provider.contains("ollama") {
             ollama += 1;
+        } else if provider.contains("deepseek") {
+            deepseek += 1;
         } else {
             other += 1;
         }
@@ -325,6 +328,15 @@ fn render_provider_card(frame: &mut Frame, state: &AppState, area: Rect) {
                     .add_modifier(Modifier::BOLD),
             ),
         Bar::default()
+            .value(deepseek)
+            .label("DpSk".into())
+            .style(Style::default().fg(Color::Yellow))
+            .value_style(
+                Style::default()
+                    .fg(Color::White)
+                    .add_modifier(Modifier::BOLD),
+            ),
+        Bar::default()
             .value(other)
             .label("Other".into())
             .style(Style::default().fg(Color::Gray))
@@ -341,6 +353,7 @@ fn render_provider_card(frame: &mut Frame, state: &AppState, area: Rect) {
         .max(grok)
         .max(anthropic)
         .max(ollama)
+        .max(deepseek)
         .max(other)
         .max(1);
     let width = if inner.width >= 50 {
@@ -397,6 +410,11 @@ fn provider_style(provider: &str) -> Style {
     if provider.contains("ollama") {
         return Style::default()
             .fg(Color::LightRed)
+            .add_modifier(Modifier::BOLD);
+    }
+    if provider.contains("deepseek") {
+        return Style::default()
+            .fg(Color::Yellow)
             .add_modifier(Modifier::BOLD);
     }
     Style::default().fg(Color::Gray)

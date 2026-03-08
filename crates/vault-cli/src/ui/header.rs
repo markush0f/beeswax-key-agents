@@ -15,7 +15,7 @@ use super::common::{elide_middle, spinner_ascii};
 const HEADER_ART_FILE: &str = ".vault-header.txt";
 const LOGO_MAX_LINES: usize = 6;
 const LEFT_MIN_WIDTH: u16 = 56;
-const TOP_INFO_LINES: u16 = 5;
+const TOP_INFO_LINES: u16 = 8;
 const TABS_LINES: u16 = 1;
 
 static HEADER_ART: OnceLock<Vec<String>> = OnceLock::new();
@@ -49,11 +49,14 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect, tick: u64) {
     let info = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(1),
-            Constraint::Length(1),
-            Constraint::Length(1),
-            Constraint::Length(1),
-            Constraint::Length(1),
+            Constraint::Length(1), // SCAN TARGET
+            Constraint::Length(1), // path
+            Constraint::Length(1), // spacer
+            Constraint::Length(1), // RESULTS
+            Constraint::Length(1), // spacer
+            Constraint::Length(1), // STATUS
+            Constraint::Length(1), // spacer
+            Constraint::Length(1), // MODE
         ])
         .split(top[0]);
 
@@ -64,9 +67,9 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect, tick: u64) {
 
     render_path_label_line(frame, info[0]);
     render_path_value_line(frame, state, info[1]);
-    render_results_line(frame, state, info[2], accent);
-    render_status_line(frame, state, info[3]);
-    render_mode_line(frame, state, info[4], accent);
+    render_results_line(frame, state, info[3], accent);
+    render_status_line(frame, state, info[5]);
+    render_mode_line(frame, state, info[7], accent);
     render_bottom_row(frame, state, sections[1], tick, accent);
 }
 
@@ -107,21 +110,21 @@ fn render_results_line(frame: &mut Frame, state: &AppState, area: Rect, accent: 
                 .fg(Color::White)
                 .add_modifier(Modifier::BOLD),
         ),
-        Span::styled(" | IDES ", Style::default().fg(Color::Gray)),
+        Span::styled("   |   IDES ", Style::default().fg(Color::Gray)),
         Span::styled(
             state.ides.len().to_string(),
             Style::default()
                 .fg(Color::White)
                 .add_modifier(Modifier::BOLD),
         ),
-        Span::styled(" | FILES ", Style::default().fg(Color::Gray)),
+        Span::styled("   |   FILES ", Style::default().fg(Color::Gray)),
         Span::styled(
             state.files.len().to_string(),
             Style::default()
                 .fg(Color::White)
                 .add_modifier(Modifier::BOLD),
         ),
-        Span::styled(" | TOTAL ", Style::default().fg(Color::Gray)),
+        Span::styled("   |   TOTAL ", Style::default().fg(Color::Gray)),
         Span::styled(
             total.to_string(),
             Style::default().fg(accent).add_modifier(Modifier::BOLD),
@@ -136,10 +139,10 @@ fn render_status_line(frame: &mut Frame, state: &AppState, area: Rect) {
         Span::styled("STATUS ", Style::default().fg(Color::DarkGray)),
         source_label("ENV"),
         source_chip(state.env.done),
-        Span::raw("  "),
+        Span::raw("    "),
         source_label("IDES"),
         source_chip(state.ides.done),
-        Span::raw("  "),
+        Span::raw("    "),
         source_label("FILES"),
         source_chip(state.files.done),
     ]))

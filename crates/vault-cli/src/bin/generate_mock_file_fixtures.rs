@@ -11,6 +11,8 @@ use clap::Parser;
 const MOCK_FILE_PREFIX: &str = "vault_file";
 const PROJECTS_PER_WORKSPACE: usize = 20;
 const TOKEN_CHARSET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-";
+const ALPHANUMERIC_CHARSET: &[u8] =
+    b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
 const HEX_CHARSET: &[u8] = b"abcdef0123456789";
 
 #[derive(Debug, Parser)]
@@ -101,6 +103,7 @@ fn build_fixture_contents(
     let grok = grok_key(random)?;
     let anthropic = anthropic_key(random)?;
     let ollama = ollama_key(index, random)?;
+    let deepseek = deepseek_key(random)?;
 
     let marker = format!("{prefix}_{index:03}");
     let extension = file_extension(index);
@@ -114,6 +117,7 @@ fn build_fixture_contents(
             &grok,
             &anthropic,
             &ollama,
+            &deepseek,
         ),
         "ts" => ts_fixture(
             &marker,
@@ -123,6 +127,7 @@ fn build_fixture_contents(
             &grok,
             &anthropic,
             &ollama,
+            &deepseek,
         ),
         "py" => py_fixture(
             &marker,
@@ -132,6 +137,7 @@ fn build_fixture_contents(
             &grok,
             &anthropic,
             &ollama,
+            &deepseek,
         ),
         "json" => json_fixture(
             &marker,
@@ -141,6 +147,7 @@ fn build_fixture_contents(
             &grok,
             &anthropic,
             &ollama,
+            &deepseek,
         ),
         "yaml" => yaml_fixture(
             &marker,
@@ -150,6 +157,7 @@ fn build_fixture_contents(
             &grok,
             &anthropic,
             &ollama,
+            &deepseek,
         ),
         _ => toml_fixture(
             &marker,
@@ -159,6 +167,7 @@ fn build_fixture_contents(
             &grok,
             &anthropic,
             &ollama,
+            &deepseek,
         ),
     })
 }
@@ -194,6 +203,7 @@ fn rust_fixture(
     grok: &str,
     anthropic: &str,
     ollama: &str,
+    deepseek: &str,
 ) -> String {
     format!(
         "// Mock fixture marker: {marker}\n\
@@ -202,7 +212,8 @@ fn rust_fixture(
          pub const GEMINI_API_KEY: &str = \"{gemini}\";\n\
          pub const XAI_API_KEY: &str = \"{grok}\";\n\
          pub const ANTHROPIC_API_KEY: &str = \"{anthropic}\";\n\
-         pub const OLLAMA_API_KEY: &str = \"{ollama}\";\n"
+         pub const OLLAMA_API_KEY: &str = \"{ollama}\";\n\
+         pub const DEEPSEEK_API_KEY: &str = \"{deepseek}\";\n"
     )
 }
 
@@ -214,6 +225,7 @@ fn ts_fixture(
     grok: &str,
     anthropic: &str,
     ollama: &str,
+    deepseek: &str,
 ) -> String {
     format!(
         "// Mock fixture marker: {marker}\n\
@@ -222,7 +234,8 @@ fn ts_fixture(
          export const geminiApiKey = \"{gemini}\";\n\
          export const xaiApiKey = \"{grok}\";\n\
          export const anthropicApiKey = \"{anthropic}\";\n\
-         export const ollamaApiKey = \"{ollama}\";\n"
+         export const ollamaApiKey = \"{ollama}\";\n\
+         export const deepseekApiKey = \"{deepseek}\";\n"
     )
 }
 
@@ -234,6 +247,7 @@ fn py_fixture(
     grok: &str,
     anthropic: &str,
     ollama: &str,
+    deepseek: &str,
 ) -> String {
     format!(
         "# Mock fixture marker: {marker}\n\
@@ -242,7 +256,8 @@ fn py_fixture(
          GEMINI_API_KEY = \"{gemini}\"\n\
          XAI_API_KEY = \"{grok}\"\n\
          ANTHROPIC_API_KEY = \"{anthropic}\"\n\
-         OLLAMA_API_KEY = \"{ollama}\"\n"
+         OLLAMA_API_KEY = \"{ollama}\"\n\
+         DEEPSEEK_API_KEY = \"{deepseek}\"\n"
     )
 }
 
@@ -254,9 +269,10 @@ fn json_fixture(
     grok: &str,
     anthropic: &str,
     ollama: &str,
+    deepseek: &str,
 ) -> String {
     format!(
-        "{{\n  \"marker\": \"{marker}\",\n  \"openaiApiKey\": \"{openai}\",\n  \"openrouterApiKey\": \"{openrouter}\",\n  \"geminiApiKey\": \"{gemini}\",\n  \"xaiApiKey\": \"{grok}\",\n  \"anthropicApiKey\": \"{anthropic}\",\n  \"ollamaApiKey\": \"{ollama}\"\n}}\n"
+        "{{\n  \"marker\": \"{marker}\",\n  \"openaiApiKey\": \"{openai}\",\n  \"openrouterApiKey\": \"{openrouter}\",\n  \"geminiApiKey\": \"{gemini}\",\n  \"xaiApiKey\": \"{grok}\",\n  \"anthropicApiKey\": \"{anthropic}\",\n  \"ollamaApiKey\": \"{ollama}\",\n  \"deepseekApiKey\": \"{deepseek}\"\n}}\n"
     )
 }
 
@@ -268,9 +284,10 @@ fn yaml_fixture(
     grok: &str,
     anthropic: &str,
     ollama: &str,
+    deepseek: &str,
 ) -> String {
     format!(
-        "marker: {marker}\nopenai_api_key: {openai}\nopenrouter_api_key: {openrouter}\ngemini_api_key: {gemini}\nxai_api_key: {grok}\nanthropic_api_key: {anthropic}\nollama_api_key: {ollama}\n"
+        "marker: {marker}\nopenai_api_key: {openai}\nopenrouter_api_key: {openrouter}\ngemini_api_key: {gemini}\nxai_api_key: {grok}\nanthropic_api_key: {anthropic}\nollama_api_key: {ollama}\ndeepseek_api_key: {deepseek}\n"
     )
 }
 
@@ -282,6 +299,7 @@ fn toml_fixture(
     grok: &str,
     anthropic: &str,
     ollama: &str,
+    deepseek: &str,
 ) -> String {
     let mut content = String::new();
     writeln!(content, "marker = \"{marker}\"").unwrap();
@@ -291,6 +309,7 @@ fn toml_fixture(
     writeln!(content, "xai_api_key = \"{grok}\"").unwrap();
     writeln!(content, "anthropic_api_key = \"{anthropic}\"").unwrap();
     writeln!(content, "ollama_api_key = \"{ollama}\"").unwrap();
+    writeln!(content, "deepseek_api_key = \"{deepseek}\"").unwrap();
     content
 }
 
@@ -336,6 +355,10 @@ fn ollama_key(index: usize, random: &mut RandomSource) -> io::Result<String> {
             random.sample(TOKEN_CHARSET, 24)?
         )),
     }
+}
+
+fn deepseek_key(random: &mut RandomSource) -> io::Result<String> {
+    Ok(format!("sk-{}", random.sample(ALPHANUMERIC_CHARSET, 32)?))
 }
 
 struct RandomSource {
