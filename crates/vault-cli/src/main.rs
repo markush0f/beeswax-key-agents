@@ -37,7 +37,7 @@ fn main() {
     println!("{}", "======================================".cyan().bold());
     println!(
         "{}",
-        "   Vault CLI - Escáner de Secretos    ".green().bold()
+        "      Vault CLI - Secret Scanner      ".green().bold()
     );
     println!("{}", "======================================".cyan().bold());
     println!();
@@ -54,7 +54,7 @@ fn main() {
 
     println!(
         "{} .env: {}, IDES: {}, FILES: {}",
-        "Resumen:".cyan().bold(),
+        "Summary:".cyan().bold(),
         state.env.len(),
         state.ides.len(),
         state.files.len()
@@ -76,14 +76,14 @@ fn resolve_scan_path(flag_path: Option<String>) -> String {
                 ".".to_string()
             };
 
-            let prompt_result = Text::new("Directorio a escanear:")
+            let prompt_result = Text::new("Directory to scan:")
                 .with_default(&default_path)
                 .prompt();
 
             match prompt_result {
                 Ok(path) => path,
                 Err(_) => {
-                    eprintln!("{} Operación cancelada por el usuario.", "✖".red());
+                    eprintln!("{} Operation canceled by user.", "✖".red());
                     process::exit(1);
                 }
             }
