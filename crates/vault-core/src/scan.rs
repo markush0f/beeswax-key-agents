@@ -1,3 +1,29 @@
+//! High-level scanning entry points for the secret detection pipeline.
+//!
+//! Each public function in this module represents a distinct scanning strategy
+//! tailored to a specific part of a project's file system layout:
+//!
+//! | Function | Scope |
+//! |---|---|
+//! | [`scan_env_for_keys`] | `.env*` files only |
+//! | [`scan_env_for_keys_streaming`] | `.env*` files, streaming |
+//! | [`scan_all_files_for_keys`] | All text files in the tree |
+//! | [`scan_all_files_for_keys_streaming`] | All text files, streaming |
+//! | [`scan_project_files_for_keys_streaming`] | Source code only (excludes `.env*`) |
+//! | [`scan_ide_files_for_keys_streaming`] | IDE config dirs only (`.vscode`, `.idea`) |
+//!
+//! ## Caching
+//!
+//! All functions transparently load and write a BLAKE3-based file cache stored under
+//! `.vault-cache/index.json` relative to the scanned root. On the first run every
+//! file is processed; on subsequent runs only changed files are re-scanned.
+//!
+//! ## Streaming vs. Collecting
+//!
+//! Prefer the `_streaming` variants for large repositories to avoid allocating
+//! a `Vec` large enough to hold all matches. The collecting wrappers (`scan_env_for_keys`,
+//! `scan_all_files_for_keys`) are convenience helpers for tests and small scans.
+
 use std::path::Path;
 
 use walkdir::WalkDir;
@@ -9,25 +35,39 @@ use crate::matcher::find_matches_in_content_streaming_with_hash;
 use crate::patterns::get_patterns;
 use crate::types::KeyMatch;
 
-/// Recursively scans a path exclusively for environment variables files (e.g., `.env`) and returns all discovered secrets.
+/// Scans `path` recursively for `.env*` files and collects all discovered secrets.
 ///
-/// This is a convenience wrapper around [`scan_env_for_keys_streaming`] that collects all matches
-/// into a `Vec`. For large repositories, consider using the streaming variant to process matches
-/// as they are found and avoid allocating memory for all of them at once.
+/// This is a convenience wrapper around [`scan_env_for_keys_streaming`] that
+/// materialises all matches into a `Vec`. For large repositories or real-time UIs,
+/// use the streaming variant to process matches as they are found.
+///
+/// # Arguments
+///
+/// * `path` - Root directory (or file path) to start the walk from.
+///
+/// # Returns
+///
+/// A `Vec<KeyMatch>` containing every secret found across all `.env*` files under `path`.
 pub fn scan_env_for_keys(path: &str) -> Vec<KeyMatch> {
     let mut matches = Vec::new();
     scan_env_for_keys_streaming(path, |m| matches.push(m));
     matches
 }
 
-/// Recursively scans a path for `.env*` files, streaming matches via a callback.
+/// Scans `path` recursively for `.env*` files, emitting matches via a callback.
 ///
-/// All secrets found in these files are automatically considered "hardcoded" because
-/// they are being plainly assigned in a configuration wrapper.
+/// All secrets found in environment files are treated as **hardcoded** unconditionally —
+/// the literal assignment `KEY=value` is already the source of truth regardless of
+/// whether the value looks like a placeholder.
+///
+/// The scan leverages the file content cache: if a file's BLAKE3 hash has not changed
+/// since the last run, its previously discovered matches are re-emitted instantly
+/// without re-reading the file.
 ///
 /// # Arguments
-/// * `path` - The root directory or file path to start scanning from.
-/// * `on_match` - A mutable closure that is called immediately when a leak is discovered.
+///
+/// * `path` - Root directory (or file path) to start scanning from.
+/// * `on_match` - Closure called once for every discovered [`KeyMatch`].
 pub fn scan_env_for_keys_streaming<F>(path: &str, mut on_match: F)
 where
     F: FnMut(KeyMatch),
@@ -72,22 +112,33 @@ where
     cache.save();
 }
 
-/// Recursively scans all scannable files in a given path and returns all discovered secrets.
+/// Scans all readable text files under `path` and collects all discovered secrets.
 ///
-/// This is a convenience wrapper around [`scan_all_files_for_keys_streaming`] that collects all matches
-/// into a `Vec`. This function will ignore files that are not considered scannable (like binaries)
-/// and respects ignores (like `.git/` or `node_modules/`).
+/// This is a convenience wrapper around [`scan_all_files_for_keys_streaming`].
+/// Binary files, oversized files (> 2 MiB), and files in [`EXCLUDED_DIRS`](crate::config::EXCLUDED_DIRS)
+/// directories are skipped automatically.
+///
+/// # Arguments
+///
+/// * `path` - Root directory to start the recursive walk from.
 pub fn scan_all_files_for_keys(path: &str) -> Vec<KeyMatch> {
     let mut matches = Vec::new();
     scan_all_files_for_keys_streaming(path, |m| matches.push(m));
     matches
 }
 
-/// Recursively scans all scannable files in a given path, streaming matches via a callback.
+/// Scans all readable text files under `path`, emitting matches via a callback.
+///
+/// This is the broadest scanner: it walks the entire file tree, respecting the
+/// directory exclusion list, and applies all registered patterns to every scannable file.
+/// For `.env*` files encountered during the walk, matches are automatically flagged
+/// as hardcoded. For all other files, the [`is_hardcoded_in_line`](crate::matcher::is_hardcoded_in_line)
+/// heuristic determines the flag value.
 ///
 /// # Arguments
-/// * `path` - The root directory or file path to start scanning from.
-/// * `on_match` - A mutable closure that is called immediately when a leak is discovered.
+///
+/// * `path` - Root directory to start scanning from.
+/// * `on_match` - Closure called once for every discovered [`KeyMatch`].
 pub fn scan_all_files_for_keys_streaming<F>(path: &str, mut on_match: F)
 where
     F: FnMut(KeyMatch),
@@ -134,17 +185,20 @@ where
     cache.save();
 }
 
-/// Recursively scans project source code for potential secrets, streaming matches via a callback.
+/// Scans source code files under `path`, excluding `.env*` files, via a streaming callback.
 ///
-/// This function acts like `scan_all_files_for_keys_streaming`, but strictly **excludes** `.env*`
-/// environment files from the scope. It is useful when trying to verify if application code (e.g.,
-/// Python, Typescript, Rust files) contains hardcoded credentials independently of configuration files.
-/// All secrets matched here are assumed not to be hardcoded by default, relying instead on
-/// heuristic evaluation line-by-line.
+/// This scanner is designed to find hardcoded secrets in application source code
+/// (`.rs`, `.py`, `.ts`, etc.) separately from environment configuration files.
+/// All matches originating from this scanner start with `hardcoded = false` and are
+/// then refined by the line-level heuristic.
+///
+/// Useful when you want to audit CI pipelines or source repositories independently
+/// of their runtime configuration.
 ///
 /// # Arguments
-/// * `path` - The root directory or file path to start scanning from.
-/// * `on_match` - A mutable closure that is called immediately when a leak is discovered.
+///
+/// * `path` - Root directory to start scanning from.
+/// * `on_match` - Closure called once for every discovered [`KeyMatch`].
 pub fn scan_project_files_for_keys_streaming<F>(path: &str, mut on_match: F)
 where
     F: FnMut(KeyMatch),
@@ -190,15 +244,20 @@ where
     cache.save();
 }
 
-/// Recursively scans known IDE configuration directories for potential leaked secrets.
+/// Scans known IDE configuration directories under `path` for leaked secrets.
 ///
-/// Many IDEs (like VSCode, JetBrains suites) store workspace configuration in hidden
-/// `.vscode` or `.idea` folders which may be unintentionally committed or tracked.
-/// This scanner specifically targets those folders relative to the given `path`.
+/// Many modern IDEs (VS Code, JetBrains, Antigravity) store workspace-scoped
+/// configuration and AI completions caches in hidden directories under the project root.
+/// These files are sometimes accidentally committed or left unprotected, making them
+/// a non-obvious source of credential exposure.
+///
+/// This scanner walks only the directories listed in [`IDE_DIRS`] relative to `path`
+/// and ignores any that do not exist. Binary and oversized files are skipped.
 ///
 /// # Arguments
-/// * `path` - The root directory of the workspace where the IDE folder resides.
-/// * `on_match` - A mutable closure that is called immediately when a leak is discovered.
+///
+/// * `path` - Root directory of the workspace (not the IDE directory itself).
+/// * `on_match` - Closure called once for every discovered [`KeyMatch`].
 pub fn scan_ide_files_for_keys_streaming<F>(path: &str, mut on_match: F)
 where
     F: FnMut(KeyMatch),
@@ -245,6 +304,16 @@ where
     cache.save();
 }
 
+/// Reconstructs [`KeyMatch`] values from cached [`CacheMatch`] entries and emits them.
+///
+/// This is called when a file's content hash matches the cached one, allowing the scanner
+/// to bypass actual regex processing and serve results directly from the index.
+///
+/// # Arguments
+///
+/// * `file_path` - Absolute path to the file whose cached matches are being re-emitted.
+/// * `cached` - Slice of stored match metadata from the cache index.
+/// * `on_match` - The caller's output closure.
 fn emit_cached_matches<F>(file_path: &Path, cached: &[CacheMatch], on_match: &mut F)
 where
     F: FnMut(KeyMatch),

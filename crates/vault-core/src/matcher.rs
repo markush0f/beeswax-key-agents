@@ -1,26 +1,60 @@
+//! Core regex matching engine for the secret detection pipeline.
+//!
+//! This module contains the lowest-level scanning routine: given a block of text
+//! and a slice of [`SecretPattern`](crate::patterns::SecretPattern)s, it emits
+//! every discovered secret via a streaming callback together with a BLAKE3 hash
+//! of the raw value. Two supporting heuristics live here as well:
+//!
+//! - [`is_hardcoded_in_line`]: determines whether a match looks like a literal
+//!   assignment rather than a runtime variable reference.
+//! - [`mask_key`]: redacts all but the outer characters of a secret before it
+//!   is stored or displayed.
+
 use std::path::Path;
 
 use crate::patterns::SecretPattern;
 use crate::types::KeyMatch;
 
-/// Scans a given text content for secrets line by line and invokes a callback for each match.
+/// Scans a text string for secrets line by line and calls a callback for each match found.
 ///
-/// This function acts as the core matching engine. It leverages the provided `patterns`,
-/// iterates over every line in `content`, and extracts matches. For every valid match,
-/// the provided continuous callback `on_match` is called.
+/// This is the innermost and most performance-critical function in the scanning pipeline.
+/// It does not perform any I/O — all file reading and caching logic is handled by
+/// [`crate::scan`]. All `scan_*` functions ultimately delegate here.
 ///
-/// To optimize subsequent scans, a BLAKE3 hash of the secret is also computed and passed
-/// to the callback; this replaces storing the raw key in cache files.
+/// ## Processing Order
+///
+/// For every line in `content`, every pattern in `patterns` is applied. If the pattern's
+/// regex produces a capture group match and the key passes the pattern's exclusion list,
+/// the callback is invoked with:
+///
+/// 1. A fully populated [`KeyMatch`] (with the key already masked).
+/// 2. The BLAKE3 hex hash of the **raw** (unmasked) key, used for deduplication in the cache.
+///
+/// ## Hardcoded Detection
+///
+/// When `hardcoded_by_default` is `true` (e.g., when scanning `.env` files), every match
+/// is flagged as hardcoded unconditionally. Otherwise, [`is_hardcoded_in_line`] is used
+/// to determine whether the surrounding source context suggests a literal assignment.
 ///
 /// # Arguments
-/// * `file_path` - The path of the file being scanned (used to populate the `KeyMatch`).
-/// * `content` - The full string content to inspect.
-/// * `patterns` - A slice of `SecretPattern` definitions to match against.
-/// * `hardcoded_by_default` - If `true`, all matches are flagged as hardcoded (useful for `.env` files).
-///   If `false`, a heuristic (`is_hardcoded_in_line`) decides if the secret is likely hardcoded.
-/// * `on_match` - A mutable closure `FnMut(KeyMatch, String)` called for each discovered secret.
-///   The closure receives the constructed `KeyMatch` and the BLAKE3 hash of the key.
-
+///
+/// * `file_path` - Source file path embedded into each emitted [`KeyMatch`].
+/// * `content` - The full text content of the file, as a UTF-8 string slice.
+/// * `patterns` - Slice of compiled [`SecretPattern`]s to apply.
+/// * `hardcoded_by_default` - If `true`, all matches are unconditionally marked as hardcoded.
+/// * `on_match` - Mutable closure called once per discovered secret.
+///   Receives `(KeyMatch, key_hash: String)`.
+///
+/// # Example
+///
+/// ```rust,no_run
+/// use std::path::Path;
+/// use vault_core::patterns::get_patterns;
+///
+/// // find_matches_in_content_streaming_with_hash is internal to vault-core.
+/// // Access scanning functionality through the public scan::* entry points instead.
+/// // See: vault_core::scan_env_for_keys, vault_core::scan_all_files_for_keys, etc.
+/// ```
 pub fn find_matches_in_content_streaming_with_hash<F>(
     file_path: &Path,
     content: &str,
@@ -63,14 +97,27 @@ pub fn find_matches_in_content_streaming_with_hash<F>(
         });
 }
 
-/// Applies a best-effort heuristic to determine if a matched secret is hardcoded in source code.
+/// Applies a heuristic to determine whether a secret appears to be hardcoded in source code.
 ///
-/// This checks whether the line contains the secret surrounded by standard string literal
-/// quotes (`"`, `'`, or `` ` ``) or if it exists within an assignment-like construct (`=` or `:`).
+/// The heuristic considers a key hardcoded if it satisfies **either** of two conditions:
+///
+/// 1. **Quoted literal**: The key appears surrounded by `"..."`, `'...'`, or `` `...` ``.
+///    This covers most programming languages' string literal syntax.
+///
+/// 2. **Assignment context**: The trimmed line contains the key **and** includes an `=`
+///    or `:` character, suggesting a variable assignment or config entry (e.g., `KEY=value`
+///    or `key: value`).
+///
+/// # Limitations
+///
+/// This is a best-effort heuristic and can produce both false positives (e.g., a key
+/// incorrectly inferred as hardcoded from a log line) and false negatives (e.g., a
+/// multi-line string literal). It is intentionally simple to stay fast at scale.
 ///
 /// # Arguments
-/// * `line` - The full line of text containing the match.
-/// * `key` - The extracted secret key string.
+///
+/// * `line` - The full source line containing the match.
+/// * `key` - The raw (unmasked) secret key string.
 pub(crate) fn is_hardcoded_in_line(line: &str, key: &str) -> bool {
     let quoted_double = format!("\"{key}\"");
     let quoted_single = format!("'{key}'");
@@ -87,11 +134,29 @@ pub(crate) fn is_hardcoded_in_line(line: &str, key: &str) -> bool {
     trimmed.contains(key) && (trimmed.contains('=') || trimmed.contains(':'))
 }
 
-/// Masks a sensitive key string for safe console output and reporting execution.
+/// Masks a sensitive key string for safe display and logging.
 ///
-/// If the key is 12 characters or longer, it retains the first 10 characters and
-/// the last 4 characters, separating them with `...` (e.g. `sk-proj-abc...1234`).
-/// Keys shorter than 12 characters are fully redacted as `****`.
+/// The masking strategy preserves just enough of the key to be recognizable
+/// while preventing accidental secret exposure in logs, UIs, or cache files:
+///
+/// - Keys **≥ 12 characters**: retain the first 10 and last 4 characters,
+///   separated by `...` (e.g., `sk-proj-12...abcd`).
+/// - Keys **< 12 characters**: fully replaced with `****` to avoid leaking
+///   short keys where any visible fragment would reveal too much.
+///
+/// # Arguments
+///
+/// * `val` - The raw secret key string to mask.
+///
+/// # Examples
+///
+/// ```rust
+/// // Long key: retain extremities
+/// // "sk-proj-1234567890abcd" → "sk-proj-12...abcd"
+///
+/// // Short key: fully redacted
+/// // "secret" → "****"
+/// ```
 pub(crate) fn mask_key(val: &str) -> String {
     if val.len() >= 12 {
         format!("{}...{}", &val[..10], &val[val.len() - 4..])
