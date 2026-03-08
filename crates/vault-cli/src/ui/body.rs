@@ -330,3 +330,22 @@ fn provider_style(provider_str: &str) -> Style {
 
     Style::default().fg(Color::Gray)
 }
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_provider_style_mapping() {
+        // OpenAI (Green)
+        let style = provider_style("OpenAI API Key");
+        assert_eq!(style.fg, Some(Color::Rgb(0, 255, 0)));
+
+        // Gemini (Blue)
+        let style = provider_style("Gemini API Key");
+        assert_eq!(style.fg, Some(Color::Rgb(0, 0, 255)));
+
+        // Unrecognized
+        let style = provider_style("Unknown");
+        assert_eq!(style.fg, Some(Color::Gray));
+    }
+}

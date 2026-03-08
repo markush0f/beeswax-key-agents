@@ -66,3 +66,18 @@ pub fn spawn_scanners(scan_path: String) -> ScanChannels {
         files_handle,
     }
 }
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_spawn_scanners_channels() {
+        let channels = spawn_scanners(".".to_string());
+
+        // Ensure channels are created and handles exist
+        // (We don't need to join them here as they will drop naturally or we can just let them run)
+        assert!(channels.env_rx.try_recv().is_err());
+        assert!(channels.ide_rx.try_recv().is_err());
+        assert!(channels.files_rx.try_recv().is_err());
+    }
+}

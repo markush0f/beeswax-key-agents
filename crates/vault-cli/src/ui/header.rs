@@ -360,3 +360,24 @@ fn parse_logo_file(content: String) -> Vec<String> {
         .map(|line| line.trim_end_matches('\r').to_string())
         .collect()
 }
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_logo_dimensions() {
+        let width = logo_max_width();
+        assert!(width > 0);
+
+        let count = logo_line_count();
+        assert!(count > 0);
+        assert!(count <= LOGO_MAX_LINES as u16);
+    }
+
+    #[test]
+    fn test_preferred_height() {
+        let h = preferred_height();
+        // logo_line_count().max(8) + 1 + 2
+        assert!(h >= 11);
+    }
+}

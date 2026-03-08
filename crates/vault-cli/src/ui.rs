@@ -43,3 +43,22 @@ pub fn draw(frame: &mut Frame, state: &AppState, tick: u64) {
     body::render(frame, state, chunks[1]);
     footer::render(frame, state, chunks[2], tick);
 }
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ratatui::prelude::Size;
+
+    #[test]
+    fn test_viewport_height_calculation() {
+        let size = Size {
+            width: 100,
+            height: 50,
+        };
+        let vh = viewport_height(size);
+
+        // header is usually 9-10, footer is 2, plus 2 padding
+        // Let's just ensure it's a reasonable positive number reflecting the subtraction
+        assert!(vh > 0);
+        assert!(vh < 50);
+    }
+}
