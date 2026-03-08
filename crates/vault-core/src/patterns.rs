@@ -47,6 +47,14 @@ pub fn get_patterns() -> Vec<SecretPattern> {
             excluded_prefixes: &[],
         },
         SecretPattern {
+            name: "Grok API Key",
+            regex: Regex::new(
+                r#"(?:^|[^A-Za-z0-9_])XAI_API_KEY\s*[:=]\s*["']?([A-Za-z0-9._-]{24,})(?:["']|$)"#,
+            )
+            .unwrap(),
+            excluded_prefixes: &[],
+        },
+        SecretPattern {
             name: "Anthropic API Key",
             regex: Regex::new(r"(?:^|[^A-Za-z0-9])(sk-ant-[A-Za-z0-9_-]{20,})(?:$|[^A-Za-z0-9])")
                 .unwrap(),
@@ -101,6 +109,30 @@ mod tests {
 
         let line = r#"ANTHROPIC_API_KEY="sk-ant-api03-ABCDEFGHIJKLMNOPQRSTUVWX1234567890abcdEFGH""#;
         assert!(anthropic.first_capture(line).is_some());
+    }
+
+    #[test]
+    fn matches_grok_keys_from_xai_env_vars() {
+        let patterns = get_patterns();
+        let grok = patterns
+            .iter()
+            .find(|p| p.name == "Grok API Key")
+            .expect("grok pattern should exist");
+
+        let line = r#"XAI_API_KEY="w3p7p5quYqPlx7x_-B6N5Jb4M1i8wNzfF3bxJ6e5V9hGm1Qa""#;
+        assert!(grok.first_capture(line).is_some());
+    }
+
+    #[test]
+    fn does_not_match_grok_placeholders() {
+        let patterns = get_patterns();
+        let grok = patterns
+            .iter()
+            .find(|p| p.name == "Grok API Key")
+            .expect("grok pattern should exist");
+
+        let line = r#"XAI_API_KEY="your_api_key""#;
+        assert!(grok.first_capture(line).is_none());
     }
 
     #[test]

@@ -104,6 +104,7 @@ fn build_fixture_contents(
     writeln!(content, "GPT_API_KEY={}", openai_key(index + 1, random)?).unwrap();
     writeln!(content, "OPENROUTER_API_KEY={}", openrouter_key(random)?).unwrap();
     writeln!(content, "GEMINI_API_KEY={}", gemini_key(random)?).unwrap();
+    writeln!(content, "XAI_API_KEY={}", grok_key(random)?).unwrap();
     writeln!(content, "ANTHROPIC_API_KEY={}", anthropic_key(random)?).unwrap();
     writeln!(content, "OLLAMA_API_KEY={}", ollama_key(index, random)?).unwrap();
     Ok(content)
@@ -142,6 +143,10 @@ fn gemini_key(random: &mut RandomSource) -> io::Result<String> {
 
 fn openrouter_key(random: &mut RandomSource) -> io::Result<String> {
     Ok(format!("sk-or-v1-{}", random.sample(HEX_CHARSET, 64)?))
+}
+
+fn grok_key(random: &mut RandomSource) -> io::Result<String> {
+    random.sample(TOKEN_CHARSET, 48)
 }
 
 fn anthropic_key(random: &mut RandomSource) -> io::Result<String> {
