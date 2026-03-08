@@ -246,7 +246,7 @@ fn render_provider_card(frame: &mut Frame, state: &AppState, area: Rect) {
     let active = state.active_list();
     let patterns = vault_core::patterns::get_patterns();
 
-    // Contar ocurrencias dinámicamente
+    // Count occurrences dynamically
     let mut counts: HashMap<String, u64> = HashMap::new();
     let mut other_count = 0u64;
 
@@ -261,7 +261,7 @@ fn render_provider_card(frame: &mut Frame, state: &AppState, area: Rect) {
         }
     }
 
-    // Construir barras dinámicamente
+    // Build bars dynamically
     let mut bars: Vec<Bar> = Vec::new();
     let mut max_count = 1u64;
 
