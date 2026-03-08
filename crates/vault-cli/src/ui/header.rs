@@ -1,4 +1,4 @@
-use std::{fs, sync::OnceLock};
+use std::sync::OnceLock;
 
 use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Rect},
@@ -12,7 +12,7 @@ use crate::state::{AppState, Tab};
 
 use super::common::{elide_middle, spinner_ascii};
 
-const HEADER_ART_FILE: &str = ".vault-header.txt";
+const HEADER_ART_CONTENT: &str = include_str!("../../../../.vault-header.txt");
 const LOGO_MAX_LINES: usize = 6;
 const LEFT_MIN_WIDTH: u16 = 56;
 const TOP_INFO_LINES: u16 = 8;
@@ -345,11 +345,12 @@ fn logo_line_count() -> u16 {
 
 fn load_header_art() -> &'static Vec<String> {
     HEADER_ART.get_or_init(|| {
-        fs::read_to_string(HEADER_ART_FILE)
-            .ok()
-            .map(parse_logo_file)
-            .filter(|lines| !lines.is_empty())
-            .unwrap_or_else(|| "Vault".lines().map(|s| s.to_string()).collect())
+        let parsed = parse_logo_file(HEADER_ART_CONTENT.to_string());
+        if !parsed.is_empty() {
+            parsed
+        } else {
+            "Vault".lines().map(|s| s.to_string()).collect()
+        }
     })
 }
 
