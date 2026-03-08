@@ -14,6 +14,22 @@ cargo run -p vault-cli --bin generate-mock-env-fixtures -- /home/markus/mock-env
 cargo run -p vault-cli --bin generate-mock-env-fixtures -- /home/markus/mock-envs 30 vault_env
 
 
+Generate both .env and hardcoded file fixtures
+==============================================
+
+From the project root:
+
+scripts/generate-all-mock-fixtures.sh /path/to/target
+scripts/generate-all-mock-fixtures.sh /path/to/target 50
+scripts/generate-all-mock-fixtures.sh /path/to/target 50 vault_env vault_file
+
+Examples:
+
+scripts/generate-all-mock-fixtures.sh /home/markus/mock-fixtures
+scripts/generate-all-mock-fixtures.sh /home/markus/mock-fixtures 30
+scripts/generate-all-mock-fixtures.sh /home/markus/mock-fixtures 30 vault_env vault_file
+
+
 Delete mock .env fixtures
 =========================
 
@@ -30,6 +46,22 @@ cargo run -p vault-cli --bin delete-mock-env-fixtures -- /home/markus/mock-envs 
 cargo run -p vault-cli --bin delete-mock-env-fixtures -- /home/markus/mock-envs vault_env --dry-run
 
 
+Generate mock regular files with hardcoded keys
+===============================================
+
+From the project root:
+
+cargo run -p vault-cli --bin generate-mock-file-fixtures -- /path/to/target
+cargo run -p vault-cli --bin generate-mock-file-fixtures -- /path/to/target 50
+cargo run -p vault-cli --bin generate-mock-file-fixtures -- /path/to/target 50 vault_file
+
+Examples:
+
+cargo run -p vault-cli --bin generate-mock-file-fixtures -- /home/markus/mock-files
+cargo run -p vault-cli --bin generate-mock-file-fixtures -- /home/markus/mock-files 30
+cargo run -p vault-cli --bin generate-mock-file-fixtures -- /home/markus/mock-files 30 vault_file
+
+
 Notes
 =====
 
@@ -40,5 +72,10 @@ Notes
 
 - Default prefix:
   vault_env
+
+- Mock regular files use this pattern:
+  vault_file_001.ts
+  vault_file_002.py
+  vault_file_003.json
 
 - Use --dry-run before deleting if you want to verify what will be removed.

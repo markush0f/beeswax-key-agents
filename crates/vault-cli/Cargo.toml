@@ -11,6 +11,10 @@ path = "src/bin/generate_mock_env_fixtures.rs"
 name = "delete-mock-env-fixtures"
 path = "src/bin/delete_mock_env_fixtures.rs"
 
+[[bin]]
+name = "generate-mock-file-fixtures"
+path = "src/bin/generate_mock_file_fixtures.rs"
+
 [dependencies]
 clap = { version = "4.5.60", features = ["derive"] }
 colored = "3.1.1"
