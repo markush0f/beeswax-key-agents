@@ -48,7 +48,7 @@ impl App {
             loop {
                 match env_rx.try_recv() {
                     Ok(m) => {
-                        state.push_env(m, viewport_h);
+                        state.push_env(m, viewport_h.into());
                         needs_redraw = true;
                     }
                     Err(TryRecvError::Empty) => break,
@@ -67,7 +67,7 @@ impl App {
             loop {
                 match ide_rx.try_recv() {
                     Ok(m) => {
-                        state.push_ide(m, viewport_h);
+                        state.push_ide(m, viewport_h.into());
                         needs_redraw = true;
                     }
                     Err(TryRecvError::Empty) => break,
@@ -86,7 +86,7 @@ impl App {
             loop {
                 match files_rx.try_recv() {
                     Ok(m) => {
-                        state.push_file(m, viewport_h);
+                        state.push_file(m, viewport_h.into());
                         needs_redraw = true;
                     }
                     Err(TryRecvError::Empty) => break,
@@ -107,7 +107,7 @@ impl App {
                         if k.kind != KeyEventKind::Press {
                             continue;
                         }
-                        match state.handle_key(k, viewport_h) {
+                        match state.handle_key(k, viewport_h.into()) {
                             AppAction::None => needs_redraw = true,
                             AppAction::Exit => break,
                         }

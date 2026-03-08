@@ -319,7 +319,7 @@ fn render_match_line(m: &vault_core::KeyMatch) -> Line<'static> {
     Line::from(vec![provider, Span::raw(rest)])
 }
 
-fn provider_style(provider_str: &str) -> Style {
+pub(crate) fn provider_style(provider_str: &str) -> Style {
     let patterns = vault_core::patterns::get_patterns();
 
     if let Some(p) = patterns.iter().find(|p| provider_str.contains(p.name)) {
@@ -329,23 +329,4 @@ fn provider_style(provider_str: &str) -> Style {
     }
 
     Style::default().fg(Color::Gray)
-}
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_provider_style_mapping() {
-        // OpenAI (Green)
-        let style = provider_style("OpenAI API Key");
-        assert_eq!(style.fg, Some(Color::Rgb(0, 255, 0)));
-
-        // Gemini (Blue)
-        let style = provider_style("Gemini API Key");
-        assert_eq!(style.fg, Some(Color::Rgb(0, 0, 255)));
-
-        // Unrecognized
-        let style = provider_style("Unknown");
-        assert_eq!(style.fg, Some(Color::Gray));
-    }
 }
