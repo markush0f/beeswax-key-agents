@@ -41,6 +41,11 @@ pub fn get_patterns() -> Vec<SecretPattern> {
             excluded_prefixes: &["sk-or-v1-"],
         },
         SecretPattern {
+            name: "Deepseek API Key",
+            regex: Regex::new(r"(?:^|[^A-Za-z0-9])(sk-[a-zA-Z0-9]{32})(?:$|[^A-Za-z0-9])").unwrap(),
+            excluded_prefixes: &[],
+        },
+        SecretPattern {
             name: "Gemini API Key",
             regex: Regex::new(r"(?:^|[^A-Za-z0-9])(AIza[0-9A-Za-z_-]{35})(?:$|[^A-Za-z0-9])")
                 .unwrap(),
@@ -181,5 +186,29 @@ mod tests {
 
         let line = "Use ollama serve to run local models";
         assert!(ollama.first_capture(line).is_none());
+    }
+
+    #[test]
+    fn matches_deepseek_keys() {
+        let patterns = get_patterns();
+        let deepseek = patterns
+            .iter()
+            .find(|p| p.name == "Deepseek API Key")
+            .expect("deepseek pattern should exist");
+
+        let line = r#"DEEPSEEK_API_KEY="sk-1234567890abcdef1234567890abcdef""#;
+        assert!(deepseek.first_capture(line).is_some());
+    }
+
+    #[test]
+    fn does_not_match_shorter_deepseek_keys() {
+        let patterns = get_patterns();
+        let deepseek = patterns
+            .iter()
+            .find(|p| p.name == "Deepseek API Key")
+            .expect("deepseek pattern should exist");
+
+        let line = r#"DEEPSEEK_API_KEY="sk-1234567890abcdef1234567890abcde""#;
+        assert!(deepseek.first_capture(line).is_none());
     }
 }
