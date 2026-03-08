@@ -8,6 +8,12 @@
 
 <br/>
 
+<div align="center">
+  <img src="assets/screenshot.png" alt="Beeswax Key Agents Demo" width="800"/>
+</div>
+
+<br/>
+
 **Vault CLI** is a real-time tool designed to parse your repositories, servers, and configurations in search of **exposed API Tokens** or hardcoded keys. Built heavily on Rust's concurrency and a gorgeous 30 FPS visual TUI engine.
 
 ## ✨ Key Features
