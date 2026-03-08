@@ -84,14 +84,46 @@ bkad --path /var/www/my-react-site
 
 ---
 
-## 🛠 Development & Testing
+## 🛠 Desarrollo y Pruebas
 
-If you're tinkering locally, building the core, or expanding the regex logic with new secret providers, the workspace contains a robust testing suite alongside mocked file fixture generators:
+Si estás contribuyendo al proyecto, expandiendo la lógica de detección o ajustando la interfaz (TUI), utiliza los siguientes comandos:
 
+### Ejecución en Desarrollo
+Para ejecutar el binario principal sin instalarlo globalmente:
 ```bash
-# Run the complete set of tests, unit testing each crate and CLI flow:
-cargo test --workspace
+# Ejecutar el scanner (CLI)
+cargo run --bin bkad
 
-# Generate local professional documentation (Rustdoc library):
+# Ejecutar el scanner en una ruta específica
+cargo run --bin bkad -- --path ./mi-proyecto
+```
+
+### Gestión de Tests
+Hemos organizado los tests en módulos dedicados para mantener el código limpio:
+```bash
+# Ejecutar todos los tests del workspace
+cargo test
+
+# Ejecutar tests de un crate específico
+cargo test -p vault-core
+cargo test -p vault-cli
+```
+
+### Generadores de Pruebas (Fixtures)
+El proyecto incluye herramientas para generar archivos con keys falsas (mocks) para probar el scanner:
+```bash
+# Generar archivos .env de prueba
+cargo run --bin generate-mock-env-fixtures
+
+# Generar archivos de código fuente (.py, .js, .rs) con keys falsas
+cargo run --bin generate-mock-file-fixtures
+
+# Limpiar las pruebas generadas
+cargo run --bin delete-mock-env-fixtures
+```
+
+### Documentación
+```bash
+# Generar y abrir la documentación técnica de las librerías
 cargo doc --workspace --no-deps --open
 ```
