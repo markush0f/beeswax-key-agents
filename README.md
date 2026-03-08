@@ -84,60 +84,60 @@ bkad --path /var/www/my-react-site
 
 ---
 
-## 🛠 Desarrollo y Pruebas
+## 🛠 Development & Testing
 
-Si estás contribuyendo al proyecto, expandiendo la lógica de detección o ajustando la interfaz (TUI), utiliza los siguientes comandos:
+If you are contributing to the project, expanding the detection logic, or adjusting the TUI, use the following commands:
 
-### Ejecución en Desarrollo
-Para ejecutar el binario principal sin instalarlo globalmente:
+### Running in Development
+To run the main binary without installing it globally:
 ```bash
-# Ejecutar el scanner (CLI)
+# Run the scanner (CLI)
 cargo run --bin bkad
 
-# Ejecutar el scanner en una ruta específica
-cargo run --bin bkad -- --path ./mi-proyecto
+# Run the scanner on a specific path
+cargo run --bin bkad -- --path ./my-project
 ```
 
-### Gestión de Tests
-Hemos organizado los tests en módulos dedicados para mantener el código limpio:
+### Test Management
+Tests are organized into dedicated modules to keep the code clean:
 ```bash
-# Ejecutar todos los tests del workspace
+# Run all workspace tests
 cargo test
 
-# Ejecutar tests de un crate específico
+# Run tests for a specific crate
 cargo test -p vault-core
 cargo test -p vault-cli
 ```
 
-### Generadores de Pruebas (Fixtures)
-El proyecto incluye herramientas para generar archivos con keys falsas (mocks) para probar el scanner:
+### Test Fixture Generators
+The project includes tools to generate mock files with fake keys for scanner testing:
 ```bash
-# Generar archivos .env de prueba
+# Generate test .env files
 cargo run --bin generate-mock-env-fixtures
 
-# Generar archivos de código fuente (.py, .js, .rs) con keys falsas
+# Generate source code files (.py, .js, .rs) with mock keys
 cargo run --bin generate-mock-file-fixtures
 
-# Limpiar las pruebas generadas
+# Delete generated fixtures
 cargo run --bin delete-mock-env-fixtures
 ```
 
-### Documentación
+### Documentation
 ```bash
-# Generar y abrir la documentación técnica de las librerías
+# Generate and open technical documentation
 cargo doc --workspace --no-deps --open
 ```
 
-### Extensión de Patrones (Nuevos Proveedores)
-El Core de Vault está diseñado para ser extensible. Para añadir un nuevo tipo de API Key, solo necesitas modificar `vault-core`:
+### Extending Patterns (New Providers)
+Vault's Core is designed to be extensible. To add a new type of API Key, you only need to modify `vault-core`:
 
-1.  Abre `crates/vault-core/src/patterns.rs`.
-2.  Añade una nueva instancia de `SecretPattern` en la función `get_patterns()`.
-3.  Define los campos:
-    *   **name**: Nombre completo (ej. "Mistral API Key").
-    *   **short_name**: Etiqueta para gráficas (ej. "Mistral").
-    *   **color**: Tupla RGB `(r, g, b)` para la UI.
-    *   **regex**: Expresión regular que capture la key en el **primer grupo de captura**.
-    *   **excluded_prefixes**: Prefijos opcionales para evitar falsos positivos.
+1.  Open `crates/vault-core/src/patterns.rs`.
+2.  Add a new `SecretPattern` instance in the `get_patterns()` function.
+3.  Define the following fields:
+    *   **name**: Full name (e.g., "Mistral API Key").
+    *   **short_name**: Label for charts (e.g., "Mistral").
+    *   **color**: RGB tuple `(r, g, b)` for the UI.
+    *   **regex**: Regular expression that captures the key in the **first capture group**.
+    *   **excluded_prefixes**: Optional prefixes to avoid false positives.
 
-**Nota**: Al añadirlo en el Core, la interfaz del CLI se actualizará automáticamente con nuevas barras de conteo y colores sin tocar el código de `vault-cli`.
+**Note**: By adding it to the Core, the CLI interface will automatically update with new bar charts and colors without touching `vault-cli` code.
