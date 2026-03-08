@@ -127,3 +127,17 @@ cargo run --bin delete-mock-env-fixtures
 # Generar y abrir la documentación técnica de las librerías
 cargo doc --workspace --no-deps --open
 ```
+
+### Extensión de Patrones (Nuevos Proveedores)
+El Core de Vault está diseñado para ser extensible. Para añadir un nuevo tipo de API Key, solo necesitas modificar `vault-core`:
+
+1.  Abre `crates/vault-core/src/patterns.rs`.
+2.  Añade una nueva instancia de `SecretPattern` en la función `get_patterns()`.
+3.  Define los campos:
+    *   **name**: Nombre completo (ej. "Mistral API Key").
+    *   **short_name**: Etiqueta para gráficas (ej. "Mistral").
+    *   **color**: Tupla RGB `(r, g, b)` para la UI.
+    *   **regex**: Expresión regular que capture la key en el **primer grupo de captura**.
+    *   **excluded_prefixes**: Prefijos opcionales para evitar falsos positivos.
+
+**Nota**: Al añadirlo en el Core, la interfaz del CLI se actualizará automáticamente con nuevas barras de conteo y colores sin tocar el código de `vault-cli`.
