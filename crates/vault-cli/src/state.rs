@@ -1,6 +1,14 @@
+//! Application state machine and rendering layout.
+//!
+//! State is centralized securely to ensure UI modules read immutable properties
+//! while event loops inject new secrets as they are parsed from channels.
+//!
+//! Handles pagination, active tabs, array sizing, and viewport visibility boundaries.
+
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use vault_core::KeyMatch;
 
+/// Defines which category of secrets is currently displayed in the main viewport.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Tab {
     Env,
@@ -8,9 +16,16 @@ pub enum Tab {
     Files,
 }
 
+/// Generic state controller used to hold matched secrets within a specific tab.
+///
+/// It supports features like auto-scroll on new insertions (if on the tail),
+/// arbitrary pagination (Page Up vs Down), and clamping to ensure the user does
+/// not scroll into the "void".
 #[derive(Default)]
 pub struct ListState {
+    /// A vector of parsed secrets. Continually grows asynchronously.
     pub items: Vec<KeyMatch>,
+    /// Flags whether the thread scanning for this category has terminated.
     pub done: bool,
     selected: usize,
     scroll: usize,
@@ -106,11 +121,17 @@ impl ListState {
     }
 }
 
+/// Represents the overarching architecture state of the visual client at a specific frame.
 pub struct AppState {
+    /// Top-level path resolving the directory under inspection.
     pub scan_path: String,
+    /// Currently displayed view.
     pub tab: Tab,
+    /// Parsed instances from configuration files `.env`.
     pub env: ListState,
+    /// Parsed instances from specific isolated IDE paths like `.vscode/`.
     pub ides: ListState,
+    /// Parsed generic source code files based strictly on matching heuristics.
     pub files: ListState,
 }
 

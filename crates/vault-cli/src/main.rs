@@ -1,3 +1,14 @@
+//! `vault-cli` is the command-line interface and the visual TUI application for the Vault secret scanner.
+//!
+//! This executable coordinates the `vault-core` detection logic with a `ratatui`-based
+//! terminal interface. It spawns multithreaded scanners for `.env` files, IDE configs,
+//! and generic project files, displaying the results in real-time.
+//!
+//! # Features
+//! * Interactive TUI that handles live resizing, pausing, and pagination of results.
+//! * Scans multiple file classes (environment, IDE, and project) concurrently to
+//!   surface any potential secret leaks instantly.
+
 mod app;
 mod scanner;
 mod state;
@@ -16,7 +27,6 @@ use crate::state::AppState;
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 struct Args {
-    /// Directorio a escanear (por defecto: interactivo, sugiere el directorio home del usuario)
     #[arg(short, long)]
     path: Option<String>,
 }
@@ -51,6 +61,11 @@ fn main() {
     );
 }
 
+/// Resolves the intended directory to scan from user input.
+///
+/// If a path was passed via the `--path` CLI flag, it is directly used.
+/// Otherwise, it prompts the user with an interactive text prompt, decaying gracefully
+/// to the user's home directory (`~`) or the current directory (`.`) as the default.
 fn resolve_scan_path(flag_path: Option<String>) -> String {
     match flag_path {
         Some(p) => p,

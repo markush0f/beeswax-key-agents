@@ -1,3 +1,9 @@
+//! Main generic application loop.
+//!
+//! This module contains the entrypoint `App` struct which establishes the terminal environment,
+//! polls updates from the scanner threads, processes keyboard input, and fires the
+//! UI render loop at a 33ms target rate (30fps).
+
 use std::sync::mpsc::{Receiver, TryRecvError};
 use std::time::{Duration, Instant};
 
@@ -9,9 +15,15 @@ use vault_core::KeyMatch;
 use crate::state::{AppAction, AppState};
 use crate::ui;
 
+/// Application lifecycle controller.
 pub struct App;
 
 impl App {
+    /// Mounts the TUI interface, claiming the terminal viewport, and holds execution
+    /// until the user triggers a quit signal.
+    ///
+    /// The event loop parses the state of three background jobs across the channels
+    /// to live-update the corresponding results lists.
     pub fn run(
         mut state: AppState,
         env_rx: Receiver<KeyMatch>,

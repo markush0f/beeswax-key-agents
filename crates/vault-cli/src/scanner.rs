@@ -1,3 +1,8 @@
+//! Background thread integration for the `vault-core` scanning suite.
+//!
+//! This module handles launching discrete std threads and piping the `vault-core` streams
+//! back to the main UI loop via MPSC channels.
+
 use std::sync::mpsc;
 
 use vault_core::{
@@ -5,15 +10,25 @@ use vault_core::{
     scan_project_files_for_keys_streaming,
 };
 
+/// A collection of receiving channels and thread handles constructed by the scanner.
 pub struct ScanChannels {
+    /// Channel for receiving matches from .env configurations.
     pub env_rx: mpsc::Receiver<KeyMatch>,
+    /// Channel for receiving matches from hidden IDE folders (.vscode, .idea).
     pub ide_rx: mpsc::Receiver<KeyMatch>,
+    /// Channel for receiving heuristic hardcoded matches from all other source files.
     pub files_rx: mpsc::Receiver<KeyMatch>,
+    /// Thread handle for the `.env` scan.
     pub env_handle: std::thread::JoinHandle<()>,
+    /// Thread handle for the IDE files scan.
     pub ide_handle: std::thread::JoinHandle<()>,
+    /// Thread handle for the generic project files scan.
     pub files_handle: std::thread::JoinHandle<()>,
 }
 
+/// Spawns 3 dedicated threads to recursively scan the given path concurrently.
+///
+/// Returns a `ScanChannels` struct which the master UI loop can poll for live-updates.
 pub fn spawn_scanners(scan_path: String) -> ScanChannels {
     let (env_tx, env_rx) = mpsc::channel::<KeyMatch>();
     let (ide_tx, ide_rx) = mpsc::channel::<KeyMatch>();

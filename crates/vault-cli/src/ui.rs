@@ -1,3 +1,8 @@
+//! Visual ratatui component hierarchy and layout structures.
+//!
+//! Submodules here break the application into a standard `header->body->footer` display model.
+//! To render, the terminal chunks map exactly to these isolated files for cleaner abstraction.
+
 mod body;
 mod common;
 mod footer;
