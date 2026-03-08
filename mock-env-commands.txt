@@ -1,0 +1,44 @@
+Generate mock .env fixtures
+===========================
+
+From the project root:
+
+cargo run -p vault-cli --bin generate-mock-env-fixtures -- /path/to/target
+cargo run -p vault-cli --bin generate-mock-env-fixtures -- /path/to/target 50
+cargo run -p vault-cli --bin generate-mock-env-fixtures -- /path/to/target 50 vault_env
+
+Examples:
+
+cargo run -p vault-cli --bin generate-mock-env-fixtures -- /home/markus/mock-envs
+cargo run -p vault-cli --bin generate-mock-env-fixtures -- /home/markus/mock-envs 30
+cargo run -p vault-cli --bin generate-mock-env-fixtures -- /home/markus/mock-envs 30 vault_env
+
+
+Delete mock .env fixtures
+=========================
+
+From the project root:
+
+cargo run -p vault-cli --bin delete-mock-env-fixtures -- /path/to/target
+cargo run -p vault-cli --bin delete-mock-env-fixtures -- /path/to/target vault_env
+cargo run -p vault-cli --bin delete-mock-env-fixtures -- /path/to/target vault_env --dry-run
+
+Examples:
+
+cargo run -p vault-cli --bin delete-mock-env-fixtures -- /home/markus/mock-envs
+cargo run -p vault-cli --bin delete-mock-env-fixtures -- /home/markus/mock-envs vault_env
+cargo run -p vault-cli --bin delete-mock-env-fixtures -- /home/markus/mock-envs vault_env --dry-run
+
+
+Notes
+=====
+
+- Generated files follow this pattern:
+  .env.<prefix>_001
+  .env.<prefix>_002.local
+  .env.<prefix>_003.production
+
+- Default prefix:
+  vault_env
+
+- Use --dry-run before deleting if you want to verify what will be removed.

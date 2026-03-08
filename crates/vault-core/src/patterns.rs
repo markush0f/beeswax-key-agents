@@ -3,6 +3,23 @@ use regex::Regex;
 pub struct SecretPattern {
     pub name: &'static str,
     pub regex: Regex,
+    pub excluded_prefixes: &'static [&'static str],
+}
+
+impl SecretPattern {
+    pub fn first_capture<'a>(&self, line: &'a str) -> Option<&'a str> {
+        self.regex
+            .captures_iter(line)
+            .filter_map(|caps| caps.get(1).map(|matched| matched.as_str()))
+            .find(|key| self.allows_key(key))
+    }
+
+    pub fn allows_key(&self, key: &str) -> bool {
+        !self
+            .excluded_prefixes
+            .iter()
+            .any(|prefix| key.starts_with(prefix))
+    }
 }
 
 pub fn get_patterns() -> Vec<SecretPattern> {
@@ -13,23 +30,27 @@ pub fn get_patterns() -> Vec<SecretPattern> {
                 r"(?:^|[^A-Za-z0-9])(sk-or-v1-[0-9a-fA-F]{64})(?:$|[^A-Za-z0-9])",
             )
             .unwrap(),
+            excluded_prefixes: &[],
         },
         SecretPattern {
             name: "OpenAI API Key",
             regex: Regex::new(
-                r"(?:^|[^A-Za-z0-9])((?:sk-proj-|sk-(?!or-v1-))[A-Za-z0-9_-]{32,})(?:$|[^A-Za-z0-9])",
+                r"(?:^|[^A-Za-z0-9])((?:sk-proj-|sk-)[A-Za-z0-9_-]{32,})(?:$|[^A-Za-z0-9])",
             )
             .unwrap(),
+            excluded_prefixes: &["sk-or-v1-"],
         },
         SecretPattern {
             name: "Gemini API Key",
             regex: Regex::new(r"(?:^|[^A-Za-z0-9])(AIza[0-9A-Za-z_-]{35})(?:$|[^A-Za-z0-9])")
                 .unwrap(),
+            excluded_prefixes: &[],
         },
         SecretPattern {
             name: "Anthropic API Key",
             regex: Regex::new(r"(?:^|[^A-Za-z0-9])(sk-ant-[A-Za-z0-9_-]{20,})(?:$|[^A-Za-z0-9])")
                 .unwrap(),
+            excluded_prefixes: &[],
         },
         SecretPattern {
             name: "Ollama API Key",
@@ -37,6 +58,7 @@ pub fn get_patterns() -> Vec<SecretPattern> {
                 r"(?:^|[^A-Za-z0-9])((?:ollama_[A-Za-z0-9_-]{20,}|sk-ollama-[A-Za-z0-9_-]{20,}|[0-9a-fA-F]{32}\.[A-Za-z0-9_-]{20,}))(?:$|[^A-Za-z0-9])",
             )
             .unwrap(),
+            excluded_prefixes: &[],
         },
     ]
 }
@@ -54,11 +76,7 @@ mod tests {
             .expect("openrouter pattern should exist");
 
         let line = r#"OPENROUTER_API_KEY="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""#;
-        let caps = openrouter
-            .regex
-            .captures(line)
-            .expect("expected openrouter key match");
-        assert!(caps.get(1).is_some());
+        assert!(openrouter.first_capture(line).is_some());
     }
 
     #[test]
@@ -70,7 +88,7 @@ mod tests {
             .expect("openai pattern should exist");
 
         let line = r#"OPENROUTER_API_KEY="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""#;
-        assert!(openai.regex.captures(line).is_none());
+        assert!(openai.first_capture(line).is_none());
     }
 
     #[test]
@@ -82,11 +100,7 @@ mod tests {
             .expect("anthropic pattern should exist");
 
         let line = r#"ANTHROPIC_API_KEY="sk-ant-api03-ABCDEFGHIJKLMNOPQRSTUVWX1234567890abcdEFGH""#;
-        let caps = anthropic
-            .regex
-            .captures(line)
-            .expect("expected anthropic key match");
-        assert!(caps.get(1).is_some());
+        assert!(anthropic.first_capture(line).is_some());
     }
 
     #[test]
@@ -98,7 +112,7 @@ mod tests {
             .expect("anthropic pattern should exist");
 
         let line = "'asterisk-exception': {'id': 'Asterisk-exception'}";
-        assert!(anthropic.regex.captures(line).is_none());
+        assert!(anthropic.first_capture(line).is_none());
     }
 
     #[test]
@@ -110,11 +124,7 @@ mod tests {
             .expect("ollama pattern should exist");
 
         let line = r#"OLLAMA_API_KEY="ollama_ABCDEFGHIJKLMNOPQRSTUVWXYZ123456""#;
-        let caps = ollama
-            .regex
-            .captures(line)
-            .expect("expected ollama key match");
-        assert!(caps.get(1).is_some());
+        assert!(ollama.first_capture(line).is_some());
     }
 
     #[test]
@@ -126,11 +136,7 @@ mod tests {
             .expect("ollama pattern should exist");
 
         let line = r#"OLLAMA_API_KEY="0972b6f6eb88495aa1f9f581189104f1._VH6UlaBHFRMsQ0vj-sRZYDq""#;
-        let caps = ollama
-            .regex
-            .captures(line)
-            .expect("expected native ollama token format match");
-        assert!(caps.get(1).is_some());
+        assert!(ollama.first_capture(line).is_some());
     }
 
     #[test]
@@ -142,6 +148,6 @@ mod tests {
             .expect("ollama pattern should exist");
 
         let line = "Use ollama serve to run local models";
-        assert!(ollama.regex.captures(line).is_none());
+        assert!(ollama.first_capture(line).is_none());
     }
 }

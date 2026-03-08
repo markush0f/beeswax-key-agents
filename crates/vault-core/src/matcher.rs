@@ -35,6 +35,9 @@ pub fn find_matches_in_content_streaming_with_hash<F>(
             for caps in pattern.regex.captures_iter(line) {
                 if let Some(matched) = caps.get(1) {
                     let key = matched.as_str();
+                    if !pattern.allows_key(key) {
+                        continue;
+                    }
                     let key_hash = blake3::hash(key.as_bytes()).to_hex().to_string();
 
                     on_match(
