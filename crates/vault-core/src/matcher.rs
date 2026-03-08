@@ -71,7 +71,7 @@ pub fn find_matches_in_content_streaming_with_hash<F>(
 /// # Arguments
 /// * `line` - The full line of text containing the match.
 /// * `key` - The extracted secret key string.
-fn is_hardcoded_in_line(line: &str, key: &str) -> bool {
+pub(crate) fn is_hardcoded_in_line(line: &str, key: &str) -> bool {
     let quoted_double = format!("\"{key}\"");
     let quoted_single = format!("'{key}'");
     let quoted_backtick = format!("`{key}`");
@@ -92,7 +92,7 @@ fn is_hardcoded_in_line(line: &str, key: &str) -> bool {
 /// If the key is 12 characters or longer, it retains the first 10 characters and
 /// the last 4 characters, separating them with `...` (e.g. `sk-proj-abc...1234`).
 /// Keys shorter than 12 characters are fully redacted as `****`.
-fn mask_key(val: &str) -> String {
+pub(crate) fn mask_key(val: &str) -> String {
     if val.len() >= 12 {
         format!("{}...{}", &val[..10], &val[val.len() - 4..])
     } else {

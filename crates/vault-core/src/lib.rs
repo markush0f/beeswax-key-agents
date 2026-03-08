@@ -18,6 +18,9 @@ pub mod patterns;
 pub mod scan;
 pub mod types;
 
+#[cfg(test)]
+mod tests;
+
 pub use scan::{
     scan_all_files_for_keys, scan_all_files_for_keys_streaming, scan_env_for_keys,
     scan_env_for_keys_streaming, scan_ide_files_for_keys_streaming,
