@@ -27,3 +27,6 @@ target
 
 .env
 .env*
+
+# Vault Specific
+**/.vault-cache/
