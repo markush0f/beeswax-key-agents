@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     prelude::Frame,
@@ -242,102 +244,48 @@ fn render_provider_card(frame: &mut Frame, state: &AppState, area: Rect) {
     frame.render_widget(block, area);
 
     let active = state.active_list();
-    let mut openai = 0u64;
-    let mut openrouter = 0u64;
-    let mut gemini = 0u64;
-    let mut grok = 0u64;
-    let mut anthropic = 0u64;
-    let mut ollama = 0u64;
-    let mut deepseek = 0u64;
-    let mut other = 0u64;
+    let patterns = vault_core::patterns::get_patterns();
+
+    // Contar ocurrencias dinámicamente
+    let mut counts: HashMap<String, u64> = HashMap::new();
+    let mut other_count = 0u64;
 
     for item in &active.items {
-        let provider = item.provider.to_ascii_lowercase();
-        if provider.contains("openai") {
-            openai += 1;
-        } else if provider.contains("openrouter") {
-            openrouter += 1;
-        } else if provider.contains("gemini") {
-            gemini += 1;
-        } else if provider.contains("grok") {
-            grok += 1;
-        } else if provider.contains("anthropic") {
-            anthropic += 1;
-        } else if provider.contains("ollama") {
-            ollama += 1;
-        } else if provider.contains("deepseek") {
-            deepseek += 1;
+        let provider = item.provider.as_str();
+        let matched = patterns.iter().find(|p| provider.contains(p.name));
+
+        if let Some(p) = matched {
+            *counts.entry(p.name.to_string()).or_insert(0) += 1;
         } else {
-            other += 1;
+            other_count += 1;
         }
     }
 
-    let bars = [
+    // Construir barras dinámicamente
+    let mut bars: Vec<Bar> = Vec::new();
+    let mut max_count = 1u64;
+
+    for p in &patterns {
+        let count = *counts.get(p.name).unwrap_or(&0);
+        max_count = max_count.max(count);
+
+        bars.push(
+            Bar::default()
+                .value(count)
+                .label(p.short_name.into())
+                .style(Style::default().fg(Color::Rgb(p.color.0, p.color.1, p.color.2)))
+                .value_style(
+                    Style::default()
+                        .fg(Color::White)
+                        .add_modifier(Modifier::BOLD),
+                ),
+        );
+    }
+
+    max_count = max_count.max(other_count);
+    bars.push(
         Bar::default()
-            .value(openai)
-            .label("OpenAI".into())
-            .style(Style::default().fg(Color::Green))
-            .value_style(
-                Style::default()
-                    .fg(Color::White)
-                    .add_modifier(Modifier::BOLD),
-            ),
-        Bar::default()
-            .value(openrouter)
-            .label("OpenRtr".into())
-            .style(Style::default().fg(Color::Cyan))
-            .value_style(
-                Style::default()
-                    .fg(Color::White)
-                    .add_modifier(Modifier::BOLD),
-            ),
-        Bar::default()
-            .value(gemini)
-            .label("Gemini".into())
-            .style(Style::default().fg(Color::Blue))
-            .value_style(
-                Style::default()
-                    .fg(Color::White)
-                    .add_modifier(Modifier::BOLD),
-            ),
-        Bar::default()
-            .value(grok)
-            .label("Grok".into())
-            .style(Style::default().fg(Color::Magenta))
-            .value_style(
-                Style::default()
-                    .fg(Color::White)
-                    .add_modifier(Modifier::BOLD),
-            ),
-        Bar::default()
-            .value(anthropic)
-            .label("Anthro".into())
-            .style(Style::default().fg(Color::Rgb(255, 165, 0)))
-            .value_style(
-                Style::default()
-                    .fg(Color::White)
-                    .add_modifier(Modifier::BOLD),
-            ),
-        Bar::default()
-            .value(ollama)
-            .label("Ollama".into())
-            .style(Style::default().fg(Color::LightRed))
-            .value_style(
-                Style::default()
-                    .fg(Color::White)
-                    .add_modifier(Modifier::BOLD),
-            ),
-        Bar::default()
-            .value(deepseek)
-            .label("DpSk".into())
-            .style(Style::default().fg(Color::Yellow))
-            .value_style(
-                Style::default()
-                    .fg(Color::White)
-                    .add_modifier(Modifier::BOLD),
-            ),
-        Bar::default()
-            .value(other)
+            .value(other_count)
             .label("Other".into())
             .style(Style::default().fg(Color::Gray))
             .value_style(
@@ -345,17 +293,8 @@ fn render_provider_card(frame: &mut Frame, state: &AppState, area: Rect) {
                     .fg(Color::White)
                     .add_modifier(Modifier::BOLD),
             ),
-    ];
+    );
 
-    let max = openai
-        .max(openrouter)
-        .max(gemini)
-        .max(grok)
-        .max(anthropic)
-        .max(ollama)
-        .max(deepseek)
-        .max(other)
-        .max(1);
     let width = if inner.width >= 50 {
         5
     } else if inner.width >= 40 {
@@ -368,7 +307,7 @@ fn render_provider_card(frame: &mut Frame, state: &AppState, area: Rect) {
         .data(BarGroup::default().bars(&bars))
         .bar_width(width)
         .bar_gap(1)
-        .max(max)
+        .max(max_count)
         .label_style(Style::default().fg(Color::Gray))
         .value_style(Style::default().fg(Color::White));
     frame.render_widget(chart, inner);
@@ -380,42 +319,14 @@ fn render_match_line(m: &vault_core::KeyMatch) -> Line<'static> {
     Line::from(vec![provider, Span::raw(rest)])
 }
 
-fn provider_style(provider: &str) -> Style {
-    let provider = provider.to_ascii_lowercase();
-    if provider.contains("openai") {
+fn provider_style(provider_str: &str) -> Style {
+    let patterns = vault_core::patterns::get_patterns();
+
+    if let Some(p) = patterns.iter().find(|p| provider_str.contains(p.name)) {
         return Style::default()
-            .fg(Color::Green)
+            .fg(Color::Rgb(p.color.0, p.color.1, p.color.2))
             .add_modifier(Modifier::BOLD);
     }
-    if provider.contains("openrouter") {
-        return Style::default()
-            .fg(Color::Cyan)
-            .add_modifier(Modifier::BOLD);
-    }
-    if provider.contains("gemini") {
-        return Style::default()
-            .fg(Color::Blue)
-            .add_modifier(Modifier::BOLD);
-    }
-    if provider.contains("grok") {
-        return Style::default()
-            .fg(Color::Magenta)
-            .add_modifier(Modifier::BOLD);
-    }
-    if provider.contains("anthropic") {
-        return Style::default()
-            .fg(Color::Rgb(255, 165, 0))
-            .add_modifier(Modifier::BOLD);
-    }
-    if provider.contains("ollama") {
-        return Style::default()
-            .fg(Color::LightRed)
-            .add_modifier(Modifier::BOLD);
-    }
-    if provider.contains("deepseek") {
-        return Style::default()
-            .fg(Color::Yellow)
-            .add_modifier(Modifier::BOLD);
-    }
+
     Style::default().fg(Color::Gray)
 }
