@@ -243,6 +243,7 @@ fn render_provider_card(frame: &mut Frame, state: &AppState, area: Rect) {
 
     let active = state.active_list();
     let mut openai = 0u64;
+    let mut openrouter = 0u64;
     let mut gemini = 0u64;
     let mut anthropic = 0u64;
     let mut ollama = 0u64;
@@ -252,6 +253,8 @@ fn render_provider_card(frame: &mut Frame, state: &AppState, area: Rect) {
         let provider = item.provider.to_ascii_lowercase();
         if provider.contains("openai") {
             openai += 1;
+        } else if provider.contains("openrouter") {
+            openrouter += 1;
         } else if provider.contains("gemini") {
             gemini += 1;
         } else if provider.contains("anthropic") {
@@ -268,6 +271,15 @@ fn render_provider_card(frame: &mut Frame, state: &AppState, area: Rect) {
             .value(openai)
             .label("OpenAI".into())
             .style(Style::default().fg(Color::Green))
+            .value_style(
+                Style::default()
+                    .fg(Color::White)
+                    .add_modifier(Modifier::BOLD),
+            ),
+        Bar::default()
+            .value(openrouter)
+            .label("OpenRtr".into())
+            .style(Style::default().fg(Color::Cyan))
             .value_style(
                 Style::default()
                     .fg(Color::White)
@@ -312,6 +324,7 @@ fn render_provider_card(frame: &mut Frame, state: &AppState, area: Rect) {
     ];
 
     let max = openai
+        .max(openrouter)
         .max(gemini)
         .max(anthropic)
         .max(ollama)
@@ -346,6 +359,11 @@ fn provider_style(provider: &str) -> Style {
     if provider.contains("openai") {
         return Style::default()
             .fg(Color::Green)
+            .add_modifier(Modifier::BOLD);
+    }
+    if provider.contains("openrouter") {
+        return Style::default()
+            .fg(Color::Cyan)
             .add_modifier(Modifier::BOLD);
     }
     if provider.contains("gemini") {

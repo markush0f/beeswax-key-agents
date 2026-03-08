@@ -8,9 +8,16 @@ pub struct SecretPattern {
 pub fn get_patterns() -> Vec<SecretPattern> {
     vec![
         SecretPattern {
+            name: "OpenRouter API Key",
+            regex: Regex::new(
+                r"(?:^|[^A-Za-z0-9])(sk-or-v1-[0-9a-fA-F]{64})(?:$|[^A-Za-z0-9])",
+            )
+            .unwrap(),
+        },
+        SecretPattern {
             name: "OpenAI API Key",
             regex: Regex::new(
-                r"(?:^|[^A-Za-z0-9])((?:sk-proj-|sk-)[A-Za-z0-9_-]{32,})(?:$|[^A-Za-z0-9])",
+                r"(?:^|[^A-Za-z0-9])((?:sk-proj-|sk-(?!or-v1-))[A-Za-z0-9_-]{32,})(?:$|[^A-Za-z0-9])",
             )
             .unwrap(),
         },
@@ -37,6 +44,34 @@ pub fn get_patterns() -> Vec<SecretPattern> {
 #[cfg(test)]
 mod tests {
     use super::get_patterns;
+
+    #[test]
+    fn matches_openrouter_keys() {
+        let patterns = get_patterns();
+        let openrouter = patterns
+            .iter()
+            .find(|p| p.name == "OpenRouter API Key")
+            .expect("openrouter pattern should exist");
+
+        let line = r#"OPENROUTER_API_KEY="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""#;
+        let caps = openrouter
+            .regex
+            .captures(line)
+            .expect("expected openrouter key match");
+        assert!(caps.get(1).is_some());
+    }
+
+    #[test]
+    fn does_not_classify_openrouter_as_openai() {
+        let patterns = get_patterns();
+        let openai = patterns
+            .iter()
+            .find(|p| p.name == "OpenAI API Key")
+            .expect("openai pattern should exist");
+
+        let line = r#"OPENROUTER_API_KEY="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""#;
+        assert!(openai.regex.captures(line).is_none());
+    }
 
     #[test]
     fn matches_anthropic_keys() {
