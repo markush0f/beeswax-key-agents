@@ -1,12 +1,34 @@
 use regex::Regex;
 
+/// Defines a signature for a detectable secret (e.g., an API key).
+///
+/// A pattern relies on a regular expression to identify the secret, but can also
+/// specify prefixes that invalidate the match to prevent false positives (e.g.,
+/// avoiding overlap between an OpenAI and OpenRouter key).
 pub struct SecretPattern {
+    /// Human-readable name of the secret provider (e.g. "OpenAI API Key").
     pub name: &'static str,
+    /// The compiled regular expression that matches the secret. To be extracted,
+    /// the secret must be exactly matched by the first capture group.
     pub regex: Regex,
+    /// A list of string prefixes. If the captured secret begins with any of these,
+    /// it will be discarded as a false positive.
     pub excluded_prefixes: &'static [&'static str],
 }
 
 impl SecretPattern {
+    /// Attempts to find a matching secret in the given line of text.
+    ///
+    /// This method iterates over all regex captures in the line. For each capture,
+    /// it extracts the first capture group (which must contain the exact secret string).
+    /// It then verifies the extracted secret against the `excluded_prefixes` list.
+    ///
+    /// # Arguments
+    /// * `line` - A string slice containing the text to inspect.
+    ///
+    /// # Returns
+    /// * `Some(&str)` containing the matched secret if found and allowed.
+    /// * `None` if no match is found, or if all matches are filtered out by excluded prefixes.
     pub fn first_capture<'a>(&self, line: &'a str) -> Option<&'a str> {
         self.regex
             .captures_iter(line)
@@ -14,6 +36,9 @@ impl SecretPattern {
             .find(|key| self.allows_key(key))
     }
 
+    /// Verifies if a matched key is allowed based on the pattern's exclusion list.
+    ///
+    /// Returns `true` if the key does not start with any of the `excluded_prefixes`.
     pub fn allows_key(&self, key: &str) -> bool {
         !self
             .excluded_prefixes
@@ -22,6 +47,16 @@ impl SecretPattern {
     }
 }
 
+/// Returns a pre-configured vector of all supported `SecretPattern` detectors.
+///
+/// This list currently includes detectors for:
+/// * OpenRouter
+/// * OpenAI
+/// * Deepseek
+/// * Gemini
+/// * Grok
+/// * Anthropic
+/// * Ollama
 pub fn get_patterns() -> Vec<SecretPattern> {
     vec![
         SecretPattern {

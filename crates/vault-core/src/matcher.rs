@@ -3,23 +3,23 @@ use std::path::Path;
 use crate::patterns::SecretPattern;
 use crate::types::KeyMatch;
 
-// pub fn find_matches_in_content_streaming<F>(
-//     file_path: &Path,
-//     content: &str,
-//     patterns: &[SecretPattern],
-//     hardcoded_by_default: bool,
-//     on_match: &mut F,
-// ) where
-//     F: FnMut(KeyMatch),
-// {
-//     find_matches_in_content_streaming_with_hash(
-//         file_path,
-//         content,
-//         patterns,
-//         hardcoded_by_default,
-//         &mut |matched, _| on_match(matched),
-//     );
-// }
+/// Scans a given text content for secrets line by line and invokes a callback for each match.
+///
+/// This function acts as the core matching engine. It leverages the provided `patterns`,
+/// iterates over every line in `content`, and extracts matches. For every valid match,
+/// the provided continuous callback `on_match` is called.
+///
+/// To optimize subsequent scans, a BLAKE3 hash of the secret is also computed and passed
+/// to the callback; this replaces storing the raw key in cache files.
+///
+/// # Arguments
+/// * `file_path` - The path of the file being scanned (used to populate the `KeyMatch`).
+/// * `content` - The full string content to inspect.
+/// * `patterns` - A slice of `SecretPattern` definitions to match against.
+/// * `hardcoded_by_default` - If `true`, all matches are flagged as hardcoded (useful for `.env` files).
+///   If `false`, a heuristic (`is_hardcoded_in_line`) decides if the secret is likely hardcoded.
+/// * `on_match` - A mutable closure `FnMut(KeyMatch, String)` called for each discovered secret.
+///   The closure receives the constructed `KeyMatch` and the BLAKE3 hash of the key.
 
 pub fn find_matches_in_content_streaming_with_hash<F>(
     file_path: &Path,
@@ -56,9 +56,14 @@ pub fn find_matches_in_content_streaming_with_hash<F>(
     }
 }
 
-/// Best-effort heuristic for deciding if a secret is inline/hardcoded.
+/// Applies a best-effort heuristic to determine if a matched secret is hardcoded in source code.
 ///
-/// Checks for quoted literals and assignment-like lines (`=` or `:`).
+/// This checks whether the line contains the secret surrounded by standard string literal
+/// quotes (`"`, `'`, or `` ` ``) or if it exists within an assignment-like construct (`=` or `:`).
+///
+/// # Arguments
+/// * `line` - The full line of text containing the match.
+/// * `key` - The extracted secret key string.
 fn is_hardcoded_in_line(line: &str, key: &str) -> bool {
     let quoted_double = format!("\"{key}\"");
     let quoted_single = format!("'{key}'");
@@ -75,7 +80,11 @@ fn is_hardcoded_in_line(line: &str, key: &str) -> bool {
     trimmed.contains(key) && (trimmed.contains('=') || trimmed.contains(':'))
 }
 
-/// Masks a key for display: keeps a short prefix/suffix to help identify matches.
+/// Masks a sensitive key string for safe console output and reporting execution.
+///
+/// If the key is 12 characters or longer, it retains the first 10 characters and
+/// the last 4 characters, separating them with `...` (e.g. `sk-proj-abc...1234`).
+/// Keys shorter than 12 characters are fully redacted as `****`.
 fn mask_key(val: &str) -> String {
     if val.len() >= 12 {
         format!("{}...{}", &val[..10], &val[val.len() - 4..])
