@@ -24,6 +24,13 @@ pub fn get_patterns() -> Vec<SecretPattern> {
             regex: Regex::new(r"(?:^|[^A-Za-z0-9])(sk-ant-[A-Za-z0-9_-]{20,})(?:$|[^A-Za-z0-9])")
                 .unwrap(),
         },
+        SecretPattern {
+            name: "Ollama API Key",
+            regex: Regex::new(
+                r"(?:^|[^A-Za-z0-9])((?:ollama_[A-Za-z0-9_-]{20,}|sk-ollama-[A-Za-z0-9_-]{20,}))(?:$|[^A-Za-z0-9])",
+            )
+            .unwrap(),
+        },
     ]
 }
 
@@ -57,5 +64,33 @@ mod tests {
 
         let line = "'asterisk-exception': {'id': 'Asterisk-exception'}";
         assert!(anthropic.regex.captures(line).is_none());
+    }
+
+    #[test]
+    fn matches_ollama_keys() {
+        let patterns = get_patterns();
+        let ollama = patterns
+            .iter()
+            .find(|p| p.name == "Ollama API Key")
+            .expect("ollama pattern should exist");
+
+        let line = r#"OLLAMA_API_KEY="ollama_ABCDEFGHIJKLMNOPQRSTUVWXYZ123456""#;
+        let caps = ollama
+            .regex
+            .captures(line)
+            .expect("expected ollama key match");
+        assert!(caps.get(1).is_some());
+    }
+
+    #[test]
+    fn does_not_match_generic_ollama_text() {
+        let patterns = get_patterns();
+        let ollama = patterns
+            .iter()
+            .find(|p| p.name == "Ollama API Key")
+            .expect("ollama pattern should exist");
+
+        let line = "Use ollama serve to run local models";
+        assert!(ollama.regex.captures(line).is_none());
     }
 }
