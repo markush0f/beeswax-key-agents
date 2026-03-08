@@ -3,6 +3,10 @@ name = "vault-cli"
 version = "0.1.0"
 edition = "2024"
 
+[[bin]]
+name = "generate-mock-env-fixtures"
+path = "src/bin/generate_mock_env_fixtures.rs"
+
 [dependencies]
 clap = { version = "4.5.60", features = ["derive"] }
 colored = "3.1.1"
