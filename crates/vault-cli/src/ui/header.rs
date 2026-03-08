@@ -14,17 +14,14 @@ use super::common::{elide_middle, spinner_ascii};
 
 const HEADER_ART_FILE: &str = ".vault-header.txt";
 const LOGO_MAX_LINES: usize = 6;
-const LEFT_MIN_WIDTH: u16 = 36;
-const LEFT_INFO_LINES: u16 = 5;
+const LEFT_MIN_WIDTH: u16 = 56;
+const TOP_INFO_LINES: u16 = 5;
+const TABS_LINES: u16 = 1;
+
 static HEADER_ART: OnceLock<Vec<String>> = OnceLock::new();
 
 pub fn render(frame: &mut Frame, state: &AppState, area: Rect, tick: u64) {
-    let accent = match state.tab {
-        Tab::Env => Color::Green,
-        Tab::Ides => Color::Magenta,
-        Tab::Files => Color::Cyan,
-    };
-
+    let accent = accent_color(state.tab);
     let block = Block::default()
         .borders(Borders::ALL)
         .border_type(BorderType::Rounded)
@@ -32,100 +29,77 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect, tick: u64) {
     let inner = block.inner(area);
     frame.render_widget(block, area);
 
-    let logo_width = logo_max_width();
-    let right_width = logo_width.min(inner.width.saturating_sub(LEFT_MIN_WIDTH));
+    if inner.width == 0 || inner.height == 0 {
+        return;
+    }
 
-    let cols = Layout::default()
+    let sections = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([Constraint::Min(0), Constraint::Length(TABS_LINES)])
+        .split(inner);
+
+    let logo_width = logo_max_width().min(sections[0].width.saturating_sub(LEFT_MIN_WIDTH));
+    let top = Layout::default()
         .direction(Direction::Horizontal)
         .constraints([
             Constraint::Min(LEFT_MIN_WIDTH),
-            Constraint::Length(right_width),
+            Constraint::Length(logo_width),
         ])
-        .split(inner);
-    let left = Layout::default()
+        .split(sections[0]);
+    let info = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(2),
             Constraint::Length(1),
             Constraint::Length(1),
             Constraint::Length(1),
             Constraint::Length(1),
             Constraint::Length(1),
         ])
-        .split(cols[0]);
+        .split(top[0]);
 
-    // The custom ASCII header uses the right region sized to its real width.
-    let logo = Paragraph::new(build_logo_lines(accent)).alignment(Alignment::Right);
-    frame.render_widget(logo, cols[1]);
+    if top[1].width > 0 {
+        let logo = Paragraph::new(build_logo_lines(accent)).alignment(Alignment::Right);
+        frame.render_widget(logo, top[1]);
+    }
 
-    let env_status = if state.env.done {
-        Style::default()
-            .fg(Color::Black)
-            .bg(Color::Green)
-            .add_modifier(Modifier::BOLD)
-    } else {
-        Style::default()
-            .fg(Color::Black)
-            .bg(Color::Yellow)
-            .add_modifier(Modifier::BOLD)
-    };
-    let ide_status = if state.ides.done {
-        Style::default()
-            .fg(Color::Black)
-            .bg(Color::Green)
-            .add_modifier(Modifier::BOLD)
-    } else {
-        Style::default()
-            .fg(Color::Black)
-            .bg(Color::Yellow)
-            .add_modifier(Modifier::BOLD)
-    };
-    let files_status = if state.files.done {
-        Style::default()
-            .fg(Color::Black)
-            .bg(Color::Green)
-            .add_modifier(Modifier::BOLD)
-    } else {
-        Style::default()
-            .fg(Color::Black)
-            .bg(Color::Yellow)
-            .add_modifier(Modifier::BOLD)
-    };
+    render_path_label_line(frame, info[0]);
+    render_path_value_line(frame, state, info[1]);
+    render_results_line(frame, state, info[2], accent);
+    render_status_line(frame, state, info[3]);
+    render_mode_line(frame, state, info[4], accent);
+    render_bottom_row(frame, state, sections[1], tick, accent);
+}
 
-    let health = Paragraph::new(Line::from(vec![
-        Span::styled("ENV ", Style::default().fg(Color::DarkGray)),
-        Span::styled(
-            if state.env.done { " READY " } else { " SCAN " },
-            env_status,
-        ),
-        Span::raw(" "),
-        Span::styled(" IDES ", Style::default().fg(Color::DarkGray)),
-        Span::styled(
-            if state.ides.done { " READY " } else { " SCAN " },
-            ide_status,
-        ),
-        Span::raw(" "),
-        Span::styled(" FILES ", Style::default().fg(Color::DarkGray)),
-        Span::styled(
-            if state.files.done {
-                " READY "
-            } else {
-                " SCAN "
-            },
-            files_status,
-        ),
-        Span::raw(" "),
-        Span::styled(
-            spinner_ascii(tick),
-            Style::default()
-                .fg(Color::DarkGray)
-                .add_modifier(Modifier::BOLD),
-        ),
-    ]))
+pub fn preferred_height() -> u16 {
+    logo_line_count().max(TOP_INFO_LINES) + TABS_LINES + 2
+}
+
+fn render_path_label_line(frame: &mut Frame, area: Rect) {
+    let line = Paragraph::new(Line::from(vec![Span::styled(
+        "SCAN TARGET",
+        Style::default().fg(Color::DarkGray),
+    )]))
     .alignment(Alignment::Left);
-    frame.render_widget(health, left[0]);
+    frame.render_widget(line, area);
+}
 
-    let summary = Paragraph::new(Line::from(vec![
+fn render_path_value_line(frame: &mut Frame, state: &AppState, area: Rect) {
+    let scan_path = elide_middle(
+        &state.scan_path,
+        usize::from(area.width).saturating_sub(1).max(8),
+    );
+    let line = Paragraph::new(Line::from(vec![Span::styled(
+        scan_path,
+        Style::default().fg(Color::White),
+    )]))
+    .alignment(Alignment::Left);
+    frame.render_widget(line, area);
+}
+
+fn render_results_line(frame: &mut Frame, state: &AppState, area: Rect, accent: Color) {
+    let total = state.env.len() + state.ides.len() + state.files.len();
+    let line = Paragraph::new(Line::from(vec![
+        Span::styled("RESULTS ", Style::default().fg(Color::DarkGray)),
         Span::styled("ENV ", Style::default().fg(Color::Gray)),
         Span::styled(
             state.env.len().to_string(),
@@ -147,20 +121,166 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect, tick: u64) {
                 .fg(Color::White)
                 .add_modifier(Modifier::BOLD),
         ),
+        Span::styled(" | TOTAL ", Style::default().fg(Color::Gray)),
+        Span::styled(
+            total.to_string(),
+            Style::default().fg(accent).add_modifier(Modifier::BOLD),
+        ),
     ]))
     .alignment(Alignment::Left);
-    frame.render_widget(summary, left[1]);
+    frame.render_widget(line, area);
+}
 
-    let scan_path = elide_middle(
-        &state.scan_path,
-        usize::from(left[2].width).saturating_sub(13).max(8),
-    );
-    let path_line = Paragraph::new(Line::from(vec![
-        Span::styled("SCAN PATH ", Style::default().fg(Color::DarkGray)),
-        Span::styled(scan_path, Style::default().fg(Color::White)),
+fn render_status_line(frame: &mut Frame, state: &AppState, area: Rect) {
+    let line = Paragraph::new(Line::from(vec![
+        Span::styled("STATUS ", Style::default().fg(Color::DarkGray)),
+        source_label("ENV"),
+        source_chip(state.env.done),
+        Span::raw("  "),
+        source_label("IDES"),
+        source_chip(state.ides.done),
+        Span::raw("  "),
+        source_label("FILES"),
+        source_chip(state.files.done),
     ]))
     .alignment(Alignment::Left);
-    frame.render_widget(path_line, left[2]);
+    frame.render_widget(line, area);
+}
+
+fn render_mode_line(frame: &mut Frame, state: &AppState, area: Rect, accent: Color) {
+    let line = Paragraph::new(Line::from(vec![
+        Span::styled("MODE ", Style::default().fg(Color::DarkGray)),
+        Span::styled(
+            "LIVE STREAM",
+            Style::default()
+                .fg(Color::White)
+                .add_modifier(Modifier::BOLD),
+        ),
+        Span::raw("  "),
+        Span::styled("VIEW ", Style::default().fg(Color::DarkGray)),
+        Span::styled(
+            format!(" {} ", tab_label(state.tab)),
+            Style::default()
+                .fg(Color::Black)
+                .bg(accent)
+                .add_modifier(Modifier::BOLD),
+        ),
+    ]))
+    .alignment(Alignment::Left);
+    frame.render_widget(line, area);
+}
+
+fn render_hotkeys_line(frame: &mut Frame, area: Rect, accent: Color) {
+    let line = Paragraph::new(Line::from(vec![
+        Span::styled("HOTKEYS ", Style::default().fg(Color::DarkGray)),
+        hotkey("E", accent),
+        Span::styled(" ENV  ", Style::default().fg(Color::Gray)),
+        hotkey("I", accent),
+        Span::styled(" IDES  ", Style::default().fg(Color::Gray)),
+        hotkey("F", accent),
+        Span::styled(" FILES  ", Style::default().fg(Color::Gray)),
+        hotkey("TAB", accent),
+        Span::styled(" NEXT  ", Style::default().fg(Color::Gray)),
+        hotkey("Q", accent),
+        Span::styled(" QUIT", Style::default().fg(Color::Gray)),
+    ]))
+    .alignment(Alignment::Left);
+    frame.render_widget(line, area);
+}
+
+fn render_bottom_row(frame: &mut Frame, state: &AppState, area: Rect, tick: u64, accent: Color) {
+    let tab_width = tabs_width(state, tick).min(area.width);
+    let side_width = hotkeys_width()
+        .min(area.width.saturating_sub(tab_width) / 2)
+        .max(1);
+    let row = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([
+            Constraint::Length(side_width),
+            Constraint::Min(1),
+            Constraint::Length(side_width),
+        ])
+        .split(area);
+
+    render_hotkeys_line(frame, row[0], accent);
+    render_tabs(frame, state, row[1], tick, accent);
+}
+
+fn render_tabs(frame: &mut Frame, state: &AppState, area: Rect, tick: u64, accent: Color) {
+    let tab_width = tabs_width(state, tick).min(area.width);
+    let tabs_area = Rect {
+        x: area.x + area.width.saturating_sub(tab_width) / 2,
+        y: area.y,
+        width: tab_width,
+        height: area.height,
+    };
+    let tabs = Tabs::new(vec![
+        Line::from(tab_title("ENV", state.env.len(), state.env.done, tick)),
+        Line::from(tab_title("IDES", state.ides.len(), state.ides.done, tick)),
+        Line::from(tab_title(
+            "FILES",
+            state.files.len(),
+            state.files.done,
+            tick,
+        )),
+    ])
+    .select(match state.tab {
+        Tab::Env => 0,
+        Tab::Ides => 1,
+        Tab::Files => 2,
+    })
+    .highlight_style(
+        Style::default()
+            .fg(Color::Black)
+            .bg(accent)
+            .add_modifier(Modifier::BOLD),
+    )
+    .style(Style::default().fg(Color::DarkGray))
+    .divider("  ");
+    frame.render_widget(tabs, tabs_area);
+}
+
+fn accent_color(tab: Tab) -> Color {
+    match tab {
+        Tab::Env => Color::Green,
+        Tab::Ides => Color::Magenta,
+        Tab::Files => Color::Cyan,
+    }
+}
+
+fn source_label(label: &str) -> Span<'static> {
+    Span::styled(format!("{label} "), Style::default().fg(Color::Gray))
+}
+
+fn source_chip(done: bool) -> Span<'static> {
+    let (text, color) = if done {
+        (" READY ", Color::Green)
+    } else {
+        (" SCAN ", Color::Yellow)
+    };
+
+    Span::styled(
+        text,
+        Style::default()
+            .fg(Color::Black)
+            .bg(color)
+            .add_modifier(Modifier::BOLD),
+    )
+}
+
+fn hotkey(key: &str, accent: Color) -> Span<'static> {
+    Span::styled(
+        format!("[{key}]"),
+        Style::default().fg(accent).add_modifier(Modifier::BOLD),
+    )
+}
+
+fn tab_label(tab: Tab) -> &'static str {
+    match tab {
+        Tab::Env => "ENV",
+        Tab::Ides => "IDES",
+        Tab::Files => "FILES",
+    }
 }
 
 fn tab_title(label: &str, count: usize, done: bool, tick: u64) -> String {
@@ -169,6 +289,28 @@ fn tab_title(label: &str, count: usize, done: bool, tick: u64) -> String {
     } else {
         format!("{label} ({count}) SCAN {}", spinner_ascii(tick))
     }
+}
+
+fn tabs_width(state: &AppState, tick: u64) -> u16 {
+    let divider = 2;
+    let total = tab_title("ENV", state.env.len(), state.env.done, tick)
+        .chars()
+        .count()
+        + tab_title("IDES", state.ides.len(), state.ides.done, tick)
+            .chars()
+            .count()
+        + tab_title("FILES", state.files.len(), state.files.done, tick)
+            .chars()
+            .count()
+        + divider * 2;
+
+    total as u16
+}
+
+fn hotkeys_width() -> u16 {
+    "HOTKEYS [E] ENV  [I] IDES  [F] FILES  [TAB] NEXT  [Q] QUIT"
+        .chars()
+        .count() as u16
 }
 
 fn build_logo_lines(accent: Color) -> Vec<Line<'static>> {
@@ -192,10 +334,6 @@ fn logo_max_width() -> u16 {
         .map(|line| line.chars().count() as u16)
         .max()
         .unwrap_or(0)
-}
-
-pub fn preferred_height() -> u16 {
-    logo_line_count().max(LEFT_INFO_LINES) + 2
 }
 
 fn logo_line_count() -> u16 {
