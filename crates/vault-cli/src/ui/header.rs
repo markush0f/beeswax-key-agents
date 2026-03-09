@@ -29,10 +29,23 @@ use crate::state::{AppState, Tab};
 
 use super::common::{elide_middle, spinner_ascii};
 
+/// Raw content of the ASCII art logo file embedded at compile time.
 const HEADER_ART_CONTENT: &str = include_str!("../../../../.vault-header.txt");
+
+/// Maximum number of logo art lines to render in the right column.
+/// Limits the logo to 6 rows regardless of how many lines the art file contains.
 const LOGO_MAX_LINES: usize = 6;
+
+/// Minimum column width (in chars) reserved for the left info panel.
+/// The logo column takes any remaining space on the right.
 const LEFT_MIN_WIDTH: u16 = 60;
-const TOP_INFO_LINES: u16 = 6;
+
+/// Number of rows in the top info section, including the top padding spacer.
+/// Must match the number of `Constraint::Length(1)` entries in the `info` layout.
+const TOP_INFO_LINES: u16 = 7;
+
+/// Number of rows reserved at the bottom of the header for the full-width separator
+/// and the tab bar / hotkeys row.
 const TABS_LINES: u16 = 2;
 
 static HEADER_ART: OnceLock<Vec<String>> = OnceLock::new();
@@ -76,10 +89,11 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect, tick: u64) {
         ])
         .split(sections[0]);
 
-    // 6 info rows: label, path, sep, results, sep, status
+    // 7 info rows: top padding, label, path, sep, results, sep, status
     let info = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
+            Constraint::Length(1), // top padding (visual breathing room)
             Constraint::Length(1), // SCAN TARGET label
             Constraint::Length(1), // path value
             Constraint::Length(1), // separator line
@@ -94,12 +108,12 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect, tick: u64) {
         frame.render_widget(logo, top[1]);
     }
 
-    render_path_label_line(frame, info[0], accent);
-    render_path_value_line(frame, state, info[1]);
-    render_separator_line(frame, info[2], accent);
-    render_results_line(frame, state, info[3], accent);
-    render_separator_line(frame, info[4], accent);
-    render_status_line(frame, state, info[5]);
+    render_path_label_line(frame, info[1], accent);
+    render_path_value_line(frame, state, info[2]);
+    render_separator_line(frame, info[3], accent);
+    render_results_line(frame, state, info[4], accent);
+    render_separator_line(frame, info[5], accent);
+    render_status_line(frame, state, info[6]);
     // Full-width separator spanning the entire inner width (not just the left info column)
     render_separator_line(frame, sections[1], accent);
     render_bottom_row(frame, state, sections[2], tick, accent);
@@ -241,6 +255,7 @@ fn render_status_line(frame: &mut Frame, state: &AppState, area: Rect) {
 /// Renders the hotkeys hint line with bracketed key indicators.
 fn render_hotkeys_line(frame: &mut Frame, area: Rect, accent: Color) {
     let line = Paragraph::new(Line::from(vec![
+        Span::raw("  "),
         hotkey("E", accent),
         Span::styled(" ENV  ", Style::default().fg(Color::DarkGray)),
         hotkey("I", accent),
