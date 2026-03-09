@@ -286,21 +286,21 @@ impl AppState {
         self.files.set_done();
     }
 
-    /// Advances the active tab to the next in the cycle: Env → Ides → Files → Env.
+    /// Advances the active tab to the next in the cycle: Env → Files → Ides → Env.
     fn next_tab(&mut self) {
         self.tab = match self.tab {
-            Tab::Env => Tab::Ides,
-            Tab::Ides => Tab::Files,
-            Tab::Files => Tab::Env,
+            Tab::Env => Tab::Files,
+            Tab::Files => Tab::Ides,
+            Tab::Ides => Tab::Env,
         };
     }
 
-    /// Retreats the active tab to the previous in the cycle: Env → Files → Ides → Env.
+    /// Retreats the active tab to the previous in the cycle: Env → Ides → Files → Env.
     fn prev_tab(&mut self) {
         self.tab = match self.tab {
-            Tab::Env => Tab::Files,
-            Tab::Ides => Tab::Env,
-            Tab::Files => Tab::Ides,
+            Tab::Env => Tab::Ides,
+            Tab::Files => Tab::Env,
+            Tab::Ides => Tab::Files,
         };
     }
 

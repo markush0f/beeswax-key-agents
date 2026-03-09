@@ -195,21 +195,6 @@ fn render_results_line(frame: &mut Frame, state: &AppState, area: Rect, accent: 
                 .add_modifier(Modifier::BOLD),
         ),
         Span::styled("  ", Style::default()),
-        // IDES badge
-        Span::styled(
-            " IDES ",
-            Style::default()
-                .fg(Color::Black)
-                .bg(Color::Magenta)
-                .add_modifier(Modifier::BOLD),
-        ),
-        Span::styled(
-            format!(" {} ", state.ides.len()),
-            Style::default()
-                .fg(Color::Magenta)
-                .add_modifier(Modifier::BOLD),
-        ),
-        Span::styled("  ", Style::default()),
         // FILES badge
         Span::styled(
             " FILES ",
@@ -222,6 +207,21 @@ fn render_results_line(frame: &mut Frame, state: &AppState, area: Rect, accent: 
             format!(" {} ", state.files.len()),
             Style::default()
                 .fg(Color::Cyan)
+                .add_modifier(Modifier::BOLD),
+        ),
+        Span::styled("  ", Style::default()),
+        // IDES badge
+        Span::styled(
+            " IDES ",
+            Style::default()
+                .fg(Color::Black)
+                .bg(Color::Magenta)
+                .add_modifier(Modifier::BOLD),
+        ),
+        Span::styled(
+            format!(" {} ", state.ides.len()),
+            Style::default()
+                .fg(Color::Magenta)
                 .add_modifier(Modifier::BOLD),
         ),
         Span::styled("  │  TOTAL  ", Style::default().fg(Color::DarkGray)),
@@ -241,11 +241,11 @@ fn render_status_line(frame: &mut Frame, state: &AppState, area: Rect) {
         source_label("ENV"),
         source_chip(state.env.done),
         Span::raw("   "),
-        source_label("IDES"),
-        source_chip(state.ides.done),
-        Span::raw("   "),
         source_label("FILES"),
         source_chip(state.files.done),
+        Span::raw("   "),
+        source_label("IDES"),
+        source_chip(state.ides.done),
     ]))
     .alignment(Alignment::Left);
     frame.render_widget(line, area);
@@ -300,18 +300,18 @@ fn render_tabs(frame: &mut Frame, state: &AppState, area: Rect, tick: u64, accen
     };
     let tabs = Tabs::new(vec![
         Line::from(tab_title("ENV", state.env.len(), state.env.done, tick)),
-        Line::from(tab_title("IDES", state.ides.len(), state.ides.done, tick)),
         Line::from(tab_title(
             "FILES",
             state.files.len(),
             state.files.done,
             tick,
         )),
+        Line::from(tab_title("IDES", state.ides.len(), state.ides.done, tick)),
     ])
     .select(match state.tab {
         Tab::Env => 0,
-        Tab::Ides => 1,
-        Tab::Files => 2,
+        Tab::Files => 1,
+        Tab::Ides => 2,
     })
     .highlight_style(
         Style::default()
