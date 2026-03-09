@@ -2,7 +2,6 @@
 //!
 //! The header spans the top of the TUI. Its layout adapts to the available terminal width:
 //!
-//!
 //! ## ASCII Art Logo
 //!
 //! The logo is loaded once at startup from `.vault-header.txt` (located at the workspace root)
@@ -32,7 +31,7 @@ use super::common::{elide_middle, spinner_ascii};
 
 const HEADER_ART_CONTENT: &str = include_str!("../../../../.vault-header.txt");
 const LOGO_MAX_LINES: usize = 6;
-const LEFT_MIN_WIDTH: u16 = 56;
+const LEFT_MIN_WIDTH: u16 = 60;
 const TOP_INFO_LINES: u16 = 8;
 const TABS_LINES: u16 = 1;
 
@@ -72,17 +71,19 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect, tick: u64) {
             Constraint::Length(logo_width),
         ])
         .split(sections[0]);
+
+    // 8 info rows: label, path, separator, results, separator, status, separator, mode
     let info = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(1), // SCAN TARGET
-            Constraint::Length(1), // path
-            Constraint::Length(1), // spacer
-            Constraint::Length(1), // RESULTS
-            Constraint::Length(1), // spacer
-            Constraint::Length(1), // STATUS
-            Constraint::Length(1), // spacer
-            Constraint::Length(1), // MODE
+            Constraint::Length(1), // SCAN TARGET label
+            Constraint::Length(1), // path value
+            Constraint::Length(1), // separator line
+            Constraint::Length(1), // results counters
+            Constraint::Length(1), // separator line
+            Constraint::Length(1), // status chips
+            Constraint::Length(1), // separator line
+            Constraint::Length(1), // mode + view badge
         ])
         .split(top[0]);
 
@@ -91,10 +92,13 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect, tick: u64) {
         frame.render_widget(logo, top[1]);
     }
 
-    render_path_label_line(frame, info[0]);
+    render_path_label_line(frame, info[0], accent);
     render_path_value_line(frame, state, info[1]);
+    render_separator_line(frame, info[2], accent);
     render_results_line(frame, state, info[3], accent);
+    render_separator_line(frame, info[4], accent);
     render_status_line(frame, state, info[5]);
+    render_separator_line(frame, info[6], accent);
     render_mode_line(frame, state, info[7], accent);
     render_bottom_row(frame, state, sections[1], tick, accent);
 }
@@ -107,54 +111,106 @@ pub fn preferred_height() -> u16 {
     logo_line_count().max(TOP_INFO_LINES) + TABS_LINES + 2
 }
 
-fn render_path_label_line(frame: &mut Frame, area: Rect) {
-    let line = Paragraph::new(Line::from(vec![Span::styled(
-        "SCAN TARGET",
-        Style::default().fg(Color::DarkGray),
-    )]))
+/// Renders the "SCAN TARGET" section label with a small icon prefix.
+fn render_path_label_line(frame: &mut Frame, area: Rect, accent: Color) {
+    let line = Paragraph::new(Line::from(vec![
+        Span::styled("◆ ", Style::default().fg(accent)),
+        Span::styled(
+            "SCAN TARGET",
+            Style::default()
+                .fg(Color::DarkGray)
+                .add_modifier(Modifier::BOLD),
+        ),
+    ]))
     .alignment(Alignment::Left);
     frame.render_widget(line, area);
 }
 
+/// Renders the resolved scan path, truncated with middle-elision.
 fn render_path_value_line(frame: &mut Frame, state: &AppState, area: Rect) {
     let scan_path = elide_middle(
         &state.scan_path,
-        usize::from(area.width).saturating_sub(1).max(8),
+        usize::from(area.width).saturating_sub(3).max(8),
     );
-    let line = Paragraph::new(Line::from(vec![Span::styled(
-        scan_path,
-        Style::default().fg(Color::White),
-    )]))
+    let line = Paragraph::new(Line::from(vec![
+        Span::styled("  ", Style::default()),
+        Span::styled(
+            scan_path,
+            Style::default()
+                .fg(Color::White)
+                .add_modifier(Modifier::BOLD),
+        ),
+    ]))
     .alignment(Alignment::Left);
     frame.render_widget(line, area);
 }
 
+/// Renders a subtle horizontal separator using dimmed box-drawing characters.
+fn render_separator_line(frame: &mut Frame, area: Rect, accent: Color) {
+    let width = area.width as usize;
+    let dash_line: String = "─".repeat(width.saturating_sub(2));
+    let line = Paragraph::new(Line::from(Span::styled(
+        format!("╶{}╴", dash_line),
+        Style::default().fg(Color::Rgb(
+            // Dimmed version of the accent for a subtle divider
+            50, 50, 60,
+        )),
+    )));
+    // Suppress unused accent warning — kept for future theme use
+    let _ = accent;
+    frame.render_widget(line, area);
+}
+
+/// Renders the per-domain result counters in a compact badge row.
 fn render_results_line(frame: &mut Frame, state: &AppState, area: Rect, accent: Color) {
     let total = state.env.len() + state.ides.len() + state.files.len();
     let line = Paragraph::new(Line::from(vec![
-        Span::styled("RESULTS ", Style::default().fg(Color::DarkGray)),
-        Span::styled("ENV ", Style::default().fg(Color::Gray)),
+        Span::styled("  FINDINGS  ", Style::default().fg(Color::DarkGray)),
+        // ENV badge
         Span::styled(
-            state.env.len().to_string(),
+            " ENV ",
             Style::default()
-                .fg(Color::White)
+                .fg(Color::Black)
+                .bg(Color::Green)
                 .add_modifier(Modifier::BOLD),
         ),
-        Span::styled("   |   IDES ", Style::default().fg(Color::Gray)),
         Span::styled(
-            state.ides.len().to_string(),
+            format!(" {} ", state.env.len()),
             Style::default()
-                .fg(Color::White)
+                .fg(Color::Green)
                 .add_modifier(Modifier::BOLD),
         ),
-        Span::styled("   |   FILES ", Style::default().fg(Color::Gray)),
+        Span::styled("  ", Style::default()),
+        // IDES badge
         Span::styled(
-            state.files.len().to_string(),
+            " IDES ",
             Style::default()
-                .fg(Color::White)
+                .fg(Color::Black)
+                .bg(Color::Magenta)
                 .add_modifier(Modifier::BOLD),
         ),
-        Span::styled("   |   TOTAL ", Style::default().fg(Color::Gray)),
+        Span::styled(
+            format!(" {} ", state.ides.len()),
+            Style::default()
+                .fg(Color::Magenta)
+                .add_modifier(Modifier::BOLD),
+        ),
+        Span::styled("  ", Style::default()),
+        // FILES badge
+        Span::styled(
+            " FILES ",
+            Style::default()
+                .fg(Color::Black)
+                .bg(Color::Cyan)
+                .add_modifier(Modifier::BOLD),
+        ),
+        Span::styled(
+            format!(" {} ", state.files.len()),
+            Style::default()
+                .fg(Color::Cyan)
+                .add_modifier(Modifier::BOLD),
+        ),
+        Span::styled("  │  TOTAL  ", Style::default().fg(Color::DarkGray)),
         Span::styled(
             total.to_string(),
             Style::default().fg(accent).add_modifier(Modifier::BOLD),
@@ -164,15 +220,16 @@ fn render_results_line(frame: &mut Frame, state: &AppState, area: Rect, accent: 
     frame.render_widget(line, area);
 }
 
+/// Renders the scanner status row with colored READY/SCAN pill badges per domain.
 fn render_status_line(frame: &mut Frame, state: &AppState, area: Rect) {
     let line = Paragraph::new(Line::from(vec![
-        Span::styled("STATUS ", Style::default().fg(Color::DarkGray)),
+        Span::styled("  STATUS  ", Style::default().fg(Color::DarkGray)),
         source_label("ENV"),
         source_chip(state.env.done),
-        Span::raw("    "),
+        Span::raw("   "),
         source_label("IDES"),
         source_chip(state.ides.done),
-        Span::raw("    "),
+        Span::raw("   "),
         source_label("FILES"),
         source_chip(state.files.done),
     ]))
@@ -180,19 +237,19 @@ fn render_status_line(frame: &mut Frame, state: &AppState, area: Rect) {
     frame.render_widget(line, area);
 }
 
+/// Renders the current mode and active view badge.
 fn render_mode_line(frame: &mut Frame, state: &AppState, area: Rect, accent: Color) {
     let line = Paragraph::new(Line::from(vec![
-        Span::styled("MODE ", Style::default().fg(Color::DarkGray)),
+        Span::styled("  MODE  ", Style::default().fg(Color::DarkGray)),
         Span::styled(
             "LIVE STREAM",
             Style::default()
                 .fg(Color::White)
                 .add_modifier(Modifier::BOLD),
         ),
-        Span::raw("  "),
-        Span::styled("VIEW ", Style::default().fg(Color::DarkGray)),
+        Span::styled("  │  VIEW  ", Style::default().fg(Color::DarkGray)),
         Span::styled(
-            format!(" {} ", tab_label(state.tab)),
+            format!("  {} ▶", tab_label(state.tab)),
             Style::default()
                 .fg(Color::Black)
                 .bg(accent)
@@ -203,24 +260,25 @@ fn render_mode_line(frame: &mut Frame, state: &AppState, area: Rect, accent: Col
     frame.render_widget(line, area);
 }
 
+/// Renders the hotkeys hint line with bracketed key indicators.
 fn render_hotkeys_line(frame: &mut Frame, area: Rect, accent: Color) {
     let line = Paragraph::new(Line::from(vec![
-        Span::styled("HOTKEYS ", Style::default().fg(Color::DarkGray)),
         hotkey("E", accent),
-        Span::styled(" ENV  ", Style::default().fg(Color::Gray)),
+        Span::styled(" ENV  ", Style::default().fg(Color::DarkGray)),
         hotkey("I", accent),
-        Span::styled(" IDES  ", Style::default().fg(Color::Gray)),
+        Span::styled(" IDES  ", Style::default().fg(Color::DarkGray)),
         hotkey("F", accent),
-        Span::styled(" FILES  ", Style::default().fg(Color::Gray)),
+        Span::styled(" FILES  ", Style::default().fg(Color::DarkGray)),
         hotkey("TAB", accent),
-        Span::styled(" NEXT  ", Style::default().fg(Color::Gray)),
+        Span::styled(" NEXT  ", Style::default().fg(Color::DarkGray)),
         hotkey("Q", accent),
-        Span::styled(" QUIT", Style::default().fg(Color::Gray)),
+        Span::styled(" QUIT", Style::default().fg(Color::DarkGray)),
     ]))
     .alignment(Alignment::Left);
     frame.render_widget(line, area);
 }
 
+/// Lays out the bottom tab bar, centering tabs between two hotkey hint strips.
 fn render_bottom_row(frame: &mut Frame, state: &AppState, area: Rect, tick: u64, accent: Color) {
     let tab_width = tabs_width(state, tick).min(area.width);
     let side_width = hotkeys_width()
@@ -239,6 +297,7 @@ fn render_bottom_row(frame: &mut Frame, state: &AppState, area: Rect, tick: u64,
     render_tabs(frame, state, row[1], tick, accent);
 }
 
+/// Renders the centered tab switcher with live count and spinner.
 fn render_tabs(frame: &mut Frame, state: &AppState, area: Rect, tick: u64, accent: Color) {
     let tab_width = tabs_width(state, tick).min(area.width);
     let tabs_area = Rect {
@@ -269,10 +328,14 @@ fn render_tabs(frame: &mut Frame, state: &AppState, area: Rect, tick: u64, accen
             .add_modifier(Modifier::BOLD),
     )
     .style(Style::default().fg(Color::DarkGray))
-    .divider("  ");
+    .divider(Span::styled(
+        " │ ",
+        Style::default().fg(Color::Rgb(50, 50, 70)),
+    ));
     frame.render_widget(tabs, tabs_area);
 }
 
+/// Maps the active tab to its accent color.
 fn accent_color(tab: Tab) -> Color {
     match tab {
         Tab::Env => Color::Green,
@@ -281,26 +344,26 @@ fn accent_color(tab: Tab) -> Color {
     }
 }
 
+/// Returns a dimmed label span for a scanner domain name.
 fn source_label(label: &str) -> Span<'static> {
     Span::styled(format!("{label} "), Style::default().fg(Color::Gray))
 }
 
+/// Returns a styled pill badge indicating the scanner's done/running state.
 fn source_chip(done: bool) -> Span<'static> {
-    let (text, color) = if done {
-        (" READY ", Color::Green)
+    let (text, fg, bg) = if done {
+        ("✓ DONE ", Color::Black, Color::Green)
     } else {
-        (" SCAN ", Color::Yellow)
+        ("⟳ SCAN ", Color::Black, Color::Yellow)
     };
 
     Span::styled(
         text,
-        Style::default()
-            .fg(Color::Black)
-            .bg(color)
-            .add_modifier(Modifier::BOLD),
+        Style::default().fg(fg).bg(bg).add_modifier(Modifier::BOLD),
     )
 }
 
+/// Returns a styled bracketed key indicator span.
 fn hotkey(key: &str, accent: Color) -> Span<'static> {
     Span::styled(
         format!("[{key}]"),
@@ -308,6 +371,7 @@ fn hotkey(key: &str, accent: Color) -> Span<'static> {
     )
 }
 
+/// Returns the display label for a tab.
 fn tab_label(tab: Tab) -> &'static str {
     match tab {
         Tab::Env => "ENV",
@@ -316,16 +380,18 @@ fn tab_label(tab: Tab) -> &'static str {
     }
 }
 
+/// Builds the tab bar title string for a single tab entry.
 fn tab_title(label: &str, count: usize, done: bool, tick: u64) -> String {
     if done {
-        format!("{label} ({count}) DONE")
+        format!(" {label} ({count}) ✓ ")
     } else {
-        format!("{label} ({count}) SCAN {}", spinner_ascii(tick))
+        format!(" {label} ({count}) {} ", spinner_ascii(tick))
     }
 }
 
+/// Measures the total width needed for all three tab titles.
 fn tabs_width(state: &AppState, tick: u64) -> u16 {
-    let divider = 2;
+    let divider = 3; // " │ " = 3 chars
     let total = tab_title("ENV", state.env.len(), state.env.done, tick)
         .chars()
         .count()
@@ -340,12 +406,14 @@ fn tabs_width(state: &AppState, tick: u64) -> u16 {
     total as u16
 }
 
+/// Measures the width of the static hotkeys hint string.
 fn hotkeys_width() -> u16 {
-    "HOTKEYS [E] ENV  [I] IDES  [F] FILES  [TAB] NEXT  [Q] QUIT"
+    "[E] ENV  [I] IDES  [F] FILES  [TAB] NEXT  [Q] QUIT"
         .chars()
         .count() as u16
 }
 
+/// Builds the logo line vector with per-line accent styling.
 fn build_logo_lines(accent: Color) -> Vec<Line<'static>> {
     load_header_art()
         .iter()
