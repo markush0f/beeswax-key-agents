@@ -19,7 +19,7 @@ use crate::state::{AppState, Tab};
 /// Holds only the UI-facing fields from [`vault_core::patterns::SecretPattern`].
 /// Unlike the full `SecretPattern`, this struct does NOT contain compiled regexes,
 /// making it cheap to hold in a static cache and fast to iterate on every frame.
-struct PatternMeta {
+    struct PatternMeta {
     name: &'static str,
     short_name: &'static str,
     color: (u8, u8, u8),

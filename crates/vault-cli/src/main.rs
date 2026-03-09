@@ -26,7 +26,7 @@ use crate::app::App;
 use crate::scanner::spawn_scanners;
 use crate::state::AppState;
 
-/// Command-line arguments accepted by the `bkad` binary.
+/// Command-line arguments accepted by the `vss-can` binary.
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 struct Args {
@@ -36,6 +36,11 @@ struct Args {
 }
 
 fn main() {
+    // On Windows, enable virtual terminal processing so that ANSI color codes
+    // emitted by `colored` are interpreted correctly by conhost / Windows Terminal.
+    #[cfg(target_os = "windows")]
+    colored::control::set_virtual_terminal(true).unwrap_or(());
+
     let args = Args::parse();
 
     println!("{}", "======================================".cyan().bold());
@@ -95,7 +100,10 @@ fn resolve_scan_path(flag_path: Option<String>) -> String {
             match prompt_result {
                 Ok(path) => path,
                 Err(_) => {
-                    eprintln!("{} Operation canceled by user.", "✖".red());
+                    #[cfg(target_os = "windows")]
+                    eprintln!("{} Operation canceled by user.", "[ERROR]".red());
+                    #[cfg(not(target_os = "windows"))]
+                    eprintln!("{} Operation canceled by user.", "x".red());
                     process::exit(1);
                 }
             }

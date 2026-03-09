@@ -42,11 +42,21 @@ This project employs a Cargo Workspace model, allowing flexibility for future in
 
 **Do you want to run it on your remote server, VPS, or laptop without installing Rust/Cargo and without compiling source code manually?**
 
-We've prepared a universal autoinstaller script. Just paste this in your terminal. It will instantly download the latest pre-compiled binary matching your architecture straight from GitHub Releases, dropping `bkad` directly into your `~/.local/bin` PATH.
+We've prepared a universal autoinstaller script. Just paste this in your terminal. It will instantly download the latest pre-compiled binary matching your architecture straight from GitHub Releases, dropping `vss-can` directly into your PATH.
 
+**Linux / macOS** (bash):
 ```bash
-curl -fsSL https://raw.githubusercontent.com/markush0f/beeswax-key-agents/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/markush0f/vault-secret-scanner/main/install.sh | bash
 ```
+
+**Windows** (PowerShell):
+```powershell
+irm https://raw.githubusercontent.com/markush0f/vault-secret-scanner/main/install.ps1 | iex
+```
+
+> [!NOTE]
+> The Windows installer places `vss-can.exe` in `%LOCALAPPDATA%\vss-can\bin` and adds it to your user PATH automatically. Open a new terminal window after installation.
+
 <details>
 <summary><b>Local Manual Installation for Developers</b></summary>
 
@@ -54,11 +64,11 @@ If you prefer to clone the repository locally and build it through regular Cargo
 
 ```bash
 # 1. Clone the project
-git clone https://github.com/markush0f/beeswax-key-agents.git
-cd beeswax-key-agents
+git clone https://github.com/markush0f/vault-secret-scanner.git
+cd vault-secret-scanner
 
 # 2. Install it in the global Cargo ecosystem
-cargo install --path crates/vault-cli --bin bkad --locked
+cargo install --path crates/vault-cli --bin vss-can --locked
 ```
 </details>
 
@@ -68,12 +78,12 @@ cargo install --path crates/vault-cli --bin bkad --locked
 
 Once installed, simply type the following anywhere in your terminal within the root directory you want to inspect:
 ```bash
-bkad
+vss-can
 ```
 
 You can also pass alternate paths via flags instantly:
 ```bash
-bkad --path /var/www/my-react-site
+vss-can --path /var/www/my-react-site
 ```
 
 ### Interactive UI Keyboard Controls
@@ -92,10 +102,10 @@ If you are contributing to the project, expanding the detection logic, or adjust
 To run the main binary without installing it globally:
 ```bash
 # Run the scanner (CLI)
-cargo run --bin bkad
+cargo run --bin vss-can
 
 # Run the scanner on a specific path
-cargo run --bin bkad -- --path ./my-project
+cargo run --bin vss-can -- --path ./my-project
 ```
 
 ### Test Management

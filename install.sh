@@ -2,7 +2,7 @@
 set -e
 
 echo "======================================"
-echo "   Vault Secret Scanner (bkad) Installer"
+echo "   Vault Secret Scanner (vss-can) Installer"
 echo "======================================"
 echo ""
 
@@ -12,7 +12,7 @@ CYAN='\033[0;36m'
 RED='\033[0;31m'
 NC='\033[0m'
 
-REPO="markush0f/beeswax-key-agents"
+REPO="markush0f/vault-secret-scanner"
 
 # 1. Detect OS and Architecture
 OS="$(uname -s)"
@@ -24,6 +24,16 @@ case "$OS" in
         ;;
     Darwin)
         OS_NAME="macos"
+        ;;
+    MINGW*|MSYS*|CYGWIN*)
+        echo -e "${RED}Windows detected via Git Bash / MSYS2 / Cygwin.${NC}"
+        echo ""
+        echo "Please use the PowerShell installer instead:"
+        echo ""
+        echo -e "  ${CYAN}irm https://raw.githubusercontent.com/markush0f/vault-secret-scanner/main/install.ps1 | iex${NC}"
+        echo ""
+        echo "Open PowerShell (Win + X -> Terminal) and run the command above."
+        exit 1
         ;;
     *)
         echo -e "${RED}Error: Unsupported operating system ($OS).${NC}"
@@ -50,7 +60,7 @@ if [ "$OS_NAME" = "linux" ] && [ "$ARCH_NAME" = "aarch64" ]; then
     exit 1
 fi
 
-ASSET_NAME="bkad-${ARCH_NAME}-${OS_NAME}.tar.gz"
+ASSET_NAME="vss-can-${ARCH_NAME}-${OS_NAME}.tar.gz"
 DOWNLOAD_URL="https://github.com/$REPO/releases/latest/download/$ASSET_NAME"
 
 echo -e "1> ${CYAN}Detecting system: $OS $ARCH${NC}"
@@ -76,9 +86,9 @@ tar -xzf "$ASSET_NAME"
 INSTALL_DIR="$HOME/.local/bin"
 mkdir -p "$INSTALL_DIR"
 
-echo -e "4> ${CYAN}Installing 'bkad' to $INSTALL_DIR...${NC}"
-mv bkad "$INSTALL_DIR/"
-chmod +x "$INSTALL_DIR/bkad"
+echo -e "4> ${CYAN}Installing 'vss-can' to $INSTALL_DIR...${NC}"
+mv vss-can "$INSTALL_DIR/"
+chmod +x "$INSTALL_DIR/vss-can"
 
 # Cleanup
 cd ~
@@ -86,7 +96,7 @@ rm -rf "$TMP_DIR"
 
 echo ""
 echo -e "${GREEN}SUCCESS! Agent Key Detector has been installed.${NC}"
-echo -e "The executable is located at: ${CYAN}$INSTALL_DIR/bkad${NC}"
+echo -e "The executable is located at: ${CYAN}$INSTALL_DIR/vss-can${NC}"
 echo ""
 
 # Check if INSTALL_DIR is in PATH
@@ -116,4 +126,4 @@ if [[ ":$PATH:" != *":$INSTALL_DIR:"* ]]; then
 fi
 
 echo "You can now run the detector by typing:"
-echo -e "${CYAN}bkad${NC} (or $INSTALL_DIR/bkad)"
+echo -e "${CYAN}vss-can${NC} (or $INSTALL_DIR/vss-can)"

@@ -39,6 +39,9 @@ impl TerminalGuard {
     /// Returns an [`io::Error`] if raw mode or the alternate screen cannot be entered,
     /// which typically indicates a non-TTY stdout (e.g., running inside a pipe).
     pub fn enter() -> io::Result<TerminalGuard> {
+        // On Windows, crossterm >= 0.27 automatically enables
+        // ENABLE_VIRTUAL_TERMINAL_PROCESSING on the stdout handle inside
+        // `enable_raw_mode()`, so no additional Win32 calls are needed here.
         terminal::enable_raw_mode()?;
         crossterm::execute!(io::stdout(), EnterAlternateScreen, cursor::Hide)?;
         Ok(TerminalGuard)
