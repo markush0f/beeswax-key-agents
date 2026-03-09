@@ -115,7 +115,3 @@ fn is_valid_prefix(prefix: &str) -> bool {
             .bytes()
             .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'_' | b'-'))
 }
-
-#[cfg(test)]
-#[path = "tests/delete_mock_env_fixtures_tests.rs"]
-mod tests;

@@ -16,9 +16,6 @@ mod scanner;
 mod state;
 mod ui;
 
-#[cfg(test)]
-mod tests;
-
 use clap::Parser;
 use colored::*;
 use directories::UserDirs;

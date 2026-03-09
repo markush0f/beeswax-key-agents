@@ -32,8 +32,8 @@ use super::common::{elide_middle, spinner_ascii};
 const HEADER_ART_CONTENT: &str = include_str!("../../../../.vault-header.txt");
 const LOGO_MAX_LINES: usize = 6;
 const LEFT_MIN_WIDTH: u16 = 60;
-const TOP_INFO_LINES: u16 = 8;
-const TABS_LINES: u16 = 1;
+const TOP_INFO_LINES: u16 = 6;
+const TABS_LINES: u16 = 2;
 
 static HEADER_ART: OnceLock<Vec<String>> = OnceLock::new();
 
@@ -60,7 +60,11 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect, tick: u64) {
 
     let sections = Layout::default()
         .direction(Direction::Vertical)
-        .constraints([Constraint::Min(0), Constraint::Length(TABS_LINES)])
+        .constraints([
+            Constraint::Min(0),
+            Constraint::Length(1),
+            Constraint::Length(1),
+        ])
         .split(inner);
 
     let logo_width = logo_max_width().min(sections[0].width.saturating_sub(LEFT_MIN_WIDTH));
@@ -72,7 +76,7 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect, tick: u64) {
         ])
         .split(sections[0]);
 
-    // 8 info rows: label, path, separator, results, separator, status, separator, mode
+    // 6 info rows: label, path, sep, results, sep, status
     let info = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
@@ -82,8 +86,6 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect, tick: u64) {
             Constraint::Length(1), // results counters
             Constraint::Length(1), // separator line
             Constraint::Length(1), // status chips
-            Constraint::Length(1), // separator line
-            Constraint::Length(1), // mode + view badge
         ])
         .split(top[0]);
 
@@ -98,9 +100,9 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect, tick: u64) {
     render_results_line(frame, state, info[3], accent);
     render_separator_line(frame, info[4], accent);
     render_status_line(frame, state, info[5]);
-    render_separator_line(frame, info[6], accent);
-    render_mode_line(frame, state, info[7], accent);
-    render_bottom_row(frame, state, sections[1], tick, accent);
+    // Full-width separator spanning the entire inner width (not just the left info column)
+    render_separator_line(frame, sections[1], accent);
+    render_bottom_row(frame, state, sections[2], tick, accent);
 }
 
 /// Returns the preferred row height for the header, in terminal rows.
@@ -156,7 +158,6 @@ fn render_separator_line(frame: &mut Frame, area: Rect, accent: Color) {
             50, 50, 60,
         )),
     )));
-    // Suppress unused accent warning — kept for future theme use
     let _ = accent;
     frame.render_widget(line, area);
 }
@@ -232,29 +233,6 @@ fn render_status_line(frame: &mut Frame, state: &AppState, area: Rect) {
         Span::raw("   "),
         source_label("FILES"),
         source_chip(state.files.done),
-    ]))
-    .alignment(Alignment::Left);
-    frame.render_widget(line, area);
-}
-
-/// Renders the current mode and active view badge.
-fn render_mode_line(frame: &mut Frame, state: &AppState, area: Rect, accent: Color) {
-    let line = Paragraph::new(Line::from(vec![
-        Span::styled("  MODE  ", Style::default().fg(Color::DarkGray)),
-        Span::styled(
-            "LIVE STREAM",
-            Style::default()
-                .fg(Color::White)
-                .add_modifier(Modifier::BOLD),
-        ),
-        Span::styled("  │  VIEW  ", Style::default().fg(Color::DarkGray)),
-        Span::styled(
-            format!("  {} ▶", tab_label(state.tab)),
-            Style::default()
-                .fg(Color::Black)
-                .bg(accent)
-                .add_modifier(Modifier::BOLD),
-        ),
     ]))
     .alignment(Alignment::Left);
     frame.render_widget(line, area);
@@ -369,15 +347,6 @@ fn hotkey(key: &str, accent: Color) -> Span<'static> {
         format!("[{key}]"),
         Style::default().fg(accent).add_modifier(Modifier::BOLD),
     )
-}
-
-/// Returns the display label for a tab.
-fn tab_label(tab: Tab) -> &'static str {
-    match tab {
-        Tab::Env => "ENV",
-        Tab::Ides => "IDES",
-        Tab::Files => "FILES",
-    }
 }
 
 /// Builds the tab bar title string for a single tab entry.

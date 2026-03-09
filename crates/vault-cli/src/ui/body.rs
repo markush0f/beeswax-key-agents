@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::sync::OnceLock;
 
 use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Rect},
@@ -12,6 +13,37 @@ use ratatui::{
 };
 
 use crate::state::{AppState, Tab};
+
+/// Lightweight pattern descriptor cached for use in rendering.
+///
+/// Holds only the UI-facing fields from [`vault_core::patterns::SecretPattern`].
+/// Unlike the full `SecretPattern`, this struct does NOT contain compiled regexes,
+/// making it cheap to hold in a static cache and fast to iterate on every frame.
+struct PatternMeta {
+    name: &'static str,
+    short_name: &'static str,
+    color: (u8, u8, u8),
+}
+
+/// Static cache of pattern UI metadata, populated once on first render.
+///
+/// Avoids calling `vault_core::patterns::get_patterns()` — which compiles all
+/// regexes — on every frame draw.
+static PATTERN_META: OnceLock<Vec<PatternMeta>> = OnceLock::new();
+
+/// Returns the cached slice of [`PatternMeta`], initializing it on first access.
+fn pattern_meta() -> &'static [PatternMeta] {
+    PATTERN_META.get_or_init(|| {
+        vault_core::patterns::get_patterns()
+            .into_iter()
+            .map(|p| PatternMeta {
+                name: p.name,
+                short_name: p.short_name,
+                color: p.color,
+            })
+            .collect()
+    })
+}
 
 /// Renders the entire body area, splitting it into the findings list and the side panel.
 ///
@@ -275,10 +307,10 @@ fn render_provider_card(frame: &mut Frame, state: &AppState, area: Rect) {
     frame.render_widget(block, area);
 
     let active = state.active_list();
-    let patterns = vault_core::patterns::get_patterns();
+    let patterns = pattern_meta();
 
     // Count occurrences dynamically
-    let mut counts: HashMap<String, u64> = HashMap::new();
+    let mut counts: HashMap<&'static str, u64> = HashMap::new();
     let mut other_count = 0u64;
 
     for item in &active.items {
@@ -286,7 +318,7 @@ fn render_provider_card(frame: &mut Frame, state: &AppState, area: Rect) {
         let matched = patterns.iter().find(|p| provider.contains(p.name));
 
         if let Some(p) = matched {
-            *counts.entry(p.name.to_string()).or_insert(0) += 1;
+            *counts.entry(p.name).or_insert(0) += 1;
         } else {
             other_count += 1;
         }
@@ -296,7 +328,7 @@ fn render_provider_card(frame: &mut Frame, state: &AppState, area: Rect) {
     let mut bars: Vec<Bar> = Vec::new();
     let mut max_count = 1u64;
 
-    for p in &patterns {
+    for p in patterns {
         let count = *counts.get(p.name).unwrap_or(&0);
         max_count = max_count.max(count);
 
@@ -356,16 +388,18 @@ fn render_match_line(m: &vault_core::KeyMatch) -> Line<'static> {
 
 /// Returns the ratatui [`Style`] registered for the given provider name.
 ///
-/// Looks up the provider in [`vault_core::patterns::get_patterns`] by name substring match
-/// and returns its RGB color with bold modifier. Falls back to `Color::Gray` for unknown providers.
+/// Looks up the cached [`PatternMeta`] slice by name substring match and
+/// returns its RGB color with bold modifier. Falls back to `Color::Gray` for
+/// unknown providers. Runs in O(n) over pattern count — always a tiny fixed slice.
 ///
 /// # Arguments
 ///
 /// * `provider_str` - The `provider` field from a [`KeyMatch`].
 pub(crate) fn provider_style(provider_str: &str) -> Style {
-    let patterns = vault_core::patterns::get_patterns();
-
-    if let Some(p) = patterns.iter().find(|p| provider_str.contains(p.name)) {
+    if let Some(p) = pattern_meta()
+        .iter()
+        .find(|p| provider_str.contains(p.name))
+    {
         return Style::default()
             .fg(Color::Rgb(p.color.0, p.color.1, p.color.2))
             .add_modifier(Modifier::BOLD);

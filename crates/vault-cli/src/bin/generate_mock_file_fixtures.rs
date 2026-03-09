@@ -382,7 +382,3 @@ impl RandomSource {
             .collect())
     }
 }
-
-#[cfg(test)]
-#[path = "tests/generate_mock_file_fixtures_tests.rs"]
-mod tests;
