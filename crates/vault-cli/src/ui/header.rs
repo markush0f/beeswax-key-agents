@@ -40,9 +40,9 @@ const LOGO_MAX_LINES: usize = 6;
 /// The logo column takes any remaining space on the right.
 const LEFT_MIN_WIDTH: u16 = 60;
 
-/// Number of rows in the top info section, including the top padding spacer.
+/// Number of rows in the top info section.
 /// Must match the number of `Constraint::Length(1)` entries in the `info` layout.
-const TOP_INFO_LINES: u16 = 7;
+const TOP_INFO_LINES: u16 = 6;
 
 /// Number of rows reserved at the bottom of the header for the full-width separator
 /// and the tab bar / hotkeys row.
@@ -89,11 +89,10 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect, tick: u64) {
         ])
         .split(sections[0]);
 
-    // 7 info rows: top padding, label, path, sep, results, sep, status
+    // 6 info rows: label, path, sep, results, sep, status
     let info = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(1), // top padding (visual breathing room)
             Constraint::Length(1), // SCAN TARGET label
             Constraint::Length(1), // path value
             Constraint::Length(1), // separator line
@@ -108,12 +107,12 @@ pub fn render(frame: &mut Frame, state: &AppState, area: Rect, tick: u64) {
         frame.render_widget(logo, top[1]);
     }
 
-    render_path_label_line(frame, info[1], accent);
-    render_path_value_line(frame, state, info[2]);
-    render_separator_line(frame, info[3], accent);
-    render_results_line(frame, state, info[4], accent);
-    render_separator_line(frame, info[5], accent);
-    render_status_line(frame, state, info[6]);
+    render_path_label_line(frame, info[0], accent);
+    render_path_value_line(frame, state, info[1]);
+    render_separator_line(frame, info[2], accent);
+    render_results_line(frame, state, info[3], accent);
+    render_separator_line(frame, info[4], accent);
+    render_status_line(frame, state, info[5]);
     // Full-width separator spanning the entire inner width (not just the left info column)
     render_separator_line(frame, sections[1], accent);
     render_bottom_row(frame, state, sections[2], tick, accent);
